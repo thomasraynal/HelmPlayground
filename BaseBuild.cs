@@ -546,45 +546,6 @@ namespace Kubernetes.Bootstrapper
                 );
         }
 
-
-        /// <summary>
-        /// helm upgrade --install --set %NSVALUES%,app=%APP% --namespace %NAMESPACE% %NAMESPACE%-%APP% imn-eventstore 
-        /// </summary>
-        protected void InstallEventStore(string product, string tenant, string group, string valuesFile = null, string app = "ges", string gesChart = null, bool recreatePods = false)
-        {
-            gesChart = gesChart ?? HelmChartsDirectory / "bz-eventstore";
-
-            HelmInstall(
-                $"{Namespace(product, group)}-{app}", gesChart,
-                product, tenant, group, app,
-                configurator: s =>
-                {
-                    if (valuesFile != null)
-                        s = s.AddValues(valuesFile);
-                    if (recreatePods)
-                        s = s.EnableRecreatePods();
-                    return s;
-                });
-        }
-
-        /// <summary>
-        ///helm upgrade --install --namespace framework-proto-pingpong --set product=framework,tenant=proto,group=pingpong,app=consul framework-proto-pingpong-consul stable/consul
-        /// </summary>
-        protected void InstallConsul(string product, string tenant, string group, string valuesFile = null, string app = "consul", string consulChart = null)
-        {
-            consulChart = consulChart ?? HelmChartsDirectory / "bz-consul";
-
-            HelmInstall(
-                $"{Namespace(product, group)}-{app}", consulChart,
-                product, tenant, group, app,
-                configurator: s =>
-                {
-                    if (valuesFile != null)
-                        s = s.AddValues(valuesFile);
-                    return s;
-                });
-        }
-
         /// <summary>
         /// helm upgrade -i --force --set %NSVALUES% -f ../config/%PRODUCT%/product.yaml --namespace %NAMESPACE% %NAMESPACE%-product-config charts/imn-product 
         /// </summary>
@@ -617,22 +578,6 @@ namespace Kubernetes.Bootstrapper
                 });
         }
 
-        /// <summary>
-        /// helm upgrade -i --force --set %NSVALUES% -f ../config/%PRODUCT%/%ENV%/groups/%GROUP%/group.yaml --namespace %NAMESPACE% %NAMESPACE%-group-config charts/imn-group
-        /// </summary>
-        protected void InstallGroup(string product, string group, string env, string valuesFile = null)
-        {
-            valuesFile = valuesFile ?? ConfigsDirectory / product / env / "groups" / group / "group.yaml";
-            HelmInstall(
-                $"{Namespace(product, group)}-group-config", HelmChartsDirectory / "bz-group",
-                product, group, env: env,
-                configurator: s =>
-                {
-                    s = s.AddValues(valuesFile);
-                    return s;
-                });
-        }
-
         protected string GetDefaultAppChart(AppType appType)
         {
             switch (appType)
@@ -651,6 +596,7 @@ namespace Kubernetes.Bootstrapper
         {
             InstallApp(AppType.Workers, product, group, env, app, appName, valuesFile, chartOverride, recreatePods, force, install, imageTag, overrideConfigurator);
         }
+
         protected void InstallApi(string product, string group, string env, string app, string appName, string valuesFile = null, string chartOverride = null,
             bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
         {
@@ -734,6 +680,8 @@ namespace Kubernetes.Bootstrapper
 
         #region rollbar
 
+        private readonly HttpClient _httpClient = new HttpClient();
+
         protected void NotifyRollbar(string appShortName, string environment, string rollbarAccessToken)
         {
             NotifyRollbarAsync(appShortName, environment, rollbarAccessToken).Wait();
@@ -767,8 +715,6 @@ namespace Kubernetes.Bootstrapper
                 Error(ex);
             }
         }
-
-        private readonly HttpClient _httpClient = new HttpClient();
 
         private class RollbarResponse<T>
         {

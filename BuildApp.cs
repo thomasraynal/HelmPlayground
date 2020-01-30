@@ -30,8 +30,8 @@ namespace Kubernetes.Bootstrapper
                 (string app, string appName, AppType appType, string appShortName)[] apps =
                
                     appNames
-                .Select(appName => ($"bz.mkp.adpt.{lowerCaseAppGroup}.{appName.ToLower()}.restapi", $"{appName.ToLower()}-restapi", AppType.Api, $"{appGroup}.{appName}.RestAPI"))
-                .ToArray();
+                        .Select(appName => ($"bz.mkp.adpt.{lowerCaseAppGroup}.{appName.ToLower()}.restapi", $"{appName.ToLower()}-restapi", AppType.Api, $"{appGroup}.{appName}.RestAPI"))
+                        .ToArray();
 
                 foreach (var app in apps)
                 {

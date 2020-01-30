@@ -1,0 +1,121 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  namespace: "{{ .Values.product }}-{{ .Values.tenant }}-{{ .Values.group }}"
+  name: {{ template "bz-api.fullname" . }}
+  labels:
+    app: {{ template "bz-api.name" . }}
+    chart: {{ template "bz-api.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    product: {{ .Values.product }}
+    environment: {{ .Values.environment }}
+    tenant: {{ .Values.tenant }}
+    group: {{ .Values.group }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "bz-api.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "bz-api.name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '3333'
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}/{{ .Values.app }}-{{ .Values.image.branch }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: protoactor
+              containerPort: {{ .Values.appConfig.ProtoActorEndpointSettings.Self.Port}}
+              protocol: TCP
+            - name: health
+              containerPort: 1337
+              protocol: TCP
+            - name: metrics
+              containerPort: 3333
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 1337
+            timeoutSeconds: 30
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 1337
+            timeoutSeconds: 15
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          env:
+            - name: CONFIG_ProtoActorEndpointSettings__Self__Host
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONFIG_BeezUPAppConfiguration__IPAddress
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONFIG_JaegerTracingSettings__Host
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          volumeMounts:
+            - name: config-product
+              mountPath: /app/config.product.yaml
+              subPath: config.product.yaml
+            - name: config-env
+              mountPath: /app/config.env.yaml
+              subPath: config.env.yaml
+            - name: config-tenant
+              mountPath: /app/config.tenant.yaml
+              subPath: config.tenant.yaml
+            - name: config-group
+              mountPath: /app/config.group.yaml
+              subPath: config.group.yaml
+            - name: config-app
+              mountPath: /app/config.app.yaml
+              subPath: config.app.yaml
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+      volumes:
+        - name: config-product
+          configMap:
+            name: config-product-{{ required "" .Values.product }}
+        - name: config-env
+          configMap:
+            name: config-env-{{ required "" .Values.environment }}
+        - name: config-tenant
+          configMap:
+            name: config-tenant-{{ required "" .Values.tenant }}
+        - name: config-group
+          configMap:
+            name: config-group-{{ required "" .Values.group }}
+        - name: config-app
+          configMap:
+            name: config-app-{{ required "" .Values.app | replace "." "-" }}
+      imagePullSecrets:
+      - name: registrysecret
