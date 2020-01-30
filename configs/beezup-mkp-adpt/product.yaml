@@ -1,0 +1,14 @@
+productConfig:
+    BeezUPAppConfiguration:
+        Product: BeezUP-MKP-ADPT
+
+    JaegerTracingSettings:
+        Enabled: false
+        Host: fixme
+        Port: 1234
+
+    RollbarSettings:
+        Enabled: true
+        ReadToken: a95da3fc2519465db52e83afb6b42262
+        WriteToken: e347e4722e8647e1a613e22ae7b981be
+        TeamId: 30643

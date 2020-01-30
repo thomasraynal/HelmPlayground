@@ -1,0 +1,27 @@
+BeezUPAppConfiguration:
+    Group: fnac
+
+FnacServiceConfiguration:
+    DegradedHttpResponseDuration: 00:00:05
+    BasePath: https://vendeur.fnac.com/api.php
+    PartnerId: 01D47B95-D9F1-9107-7C94-34142D743645
+    BeezUpKey: A74379B4-B1CE-5444-A3D7-6876E17FBE35
+    AuthenticationPath: "auth"
+    OffersUpdatePath: "offers_update"
+    BatchStatusPath: "batch_status"
+
+JaegerTracingSettings:
+    Enabled: false
+    Host: fixme
+    Port: 1234
+
+AzureStorageConnectionSettings:
+    Default:
+        AccountName: bzmkpgwfnacpub5
+        AccountKey: m/UQXtoxTIo7lqBfbZ787gcMWZfNvgjnY2dwb6/IyLfXVd7Leg3Cm3DhIBVQT8d/4POGweIgTUBWnXDH0lYLNg==
+        UseHttps: true
+        
+    HttpLogging:
+        AccountName: bzmkpgwfnacpub5
+        AccountKey: m/UQXtoxTIo7lqBfbZ787gcMWZfNvgjnY2dwb6/IyLfXVd7Leg3Cm3DhIBVQT8d/4POGweIgTUBWnXDH0lYLNg==
+        UseHttps: true

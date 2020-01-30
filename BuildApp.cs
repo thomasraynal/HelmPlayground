@@ -7,7 +7,7 @@ namespace Kubernetes.Bootstrapper
     public class BuildApp : BaseBuild
     {
 
-        AbsolutePath BEEZUP_PROD_KUBECONFIG => RootDirectory / ".." / "DevOps" / "BeezUP" / "_techs" / "aks" / ".kube" / "prodconfig";
+        AbsolutePath BEEZUP_PROD_KUBECONFIG => RootDirectory / "k8s";
 
         private void Deploy(string appGroup, string[] appNames)
         {
@@ -25,7 +25,6 @@ namespace Kubernetes.Bootstrapper
                 InstallNamespace(product, group);
                 InstallProduct(product, group);
                 InstallEnvironment(product, group, env);
-                InstallGroup(product, group, env);
 
                 (string app, string appName, AppType appType, string appShortName)[] apps =
                

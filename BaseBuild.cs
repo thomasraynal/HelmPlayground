@@ -66,7 +66,6 @@ namespace Kubernetes.Bootstrapper
 
         virtual protected AbsolutePath OneForAllDockerFile => BuildAssemblyDirectory / "docker" / "build.nuke.app.dockerfile";
 
-
         [GitRepository]
         protected readonly GitRepository GitRepository;
 
@@ -74,7 +73,6 @@ namespace Kubernetes.Bootstrapper
 
         [Parameter("Override branch (by default the git branch is user.")]
         protected readonly string OverrideBranch;
-
 
         protected string BEEZUP_BUILD_ID => $"{Environment.MachineName}-{Branch}-{DateTime.UtcNow.ToString("yyyy-MM-dd-hh:mm:ss")}";
 
