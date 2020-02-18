@@ -4,8 +4,8 @@ metadata:
   namespace: "{{ .Values.product }}-{{ .Values.tenant }}-{{ .Values.group }}"
   name: config-app-{{ required "An app name is needed" .Values.app | replace "." "-" }}
   labels:
-    app: {{ template "bz-api.name" . }}
-    chart: {{ template "bz-api.chart" . }}
+    app: {{ template "api-name" . }}
+    chart: {{ template "api-chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
     product: {{ .Values.product }}

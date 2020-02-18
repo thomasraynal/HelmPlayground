@@ -1,17 +1,11 @@
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "bz-api.name" -}}
+{{- define "api-name" -}}
 {{- .Values.app | replace "." "-" -}}
 {{- end -}}
 
-{{- define "bz-api.fullname" -}}
+{{- define "api-fullname" -}}
 {{- .Values.app | replace "." "-" -}}
 {{- end -}}
 
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "bz-api.chart" -}}
+{{- define "api-chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
