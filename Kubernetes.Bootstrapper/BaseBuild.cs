@@ -32,6 +32,10 @@ namespace Kubernetes.Bootstrapper
     {
 
         private const string ReleaseConfiguration = "Release";
+        private const string DEFAULT_BUILD_ID_NUMBER = "local";
+
+        [GitRepository]
+        protected readonly GitRepository GitRepository;
 
         [Parameter("Target runtime")]
         protected readonly string TargetRuntime = "debian-x64";
@@ -42,10 +46,6 @@ namespace Kubernetes.Bootstrapper
         [Parameter("Standard apps runtime image")]
         protected readonly string AppsRuntimeDockerImage = "microsoft/dotnet:2.2-runtime";
 
-        [Parameter("If true, some error will be caught to avoid stopping the build process.")]
-        protected readonly bool NoError = false;
-
-        static string DEFAULT_BUILD_ID_NUMBER = "local";
 
         [Parameter("Set the build Id.")]
         protected readonly string BuildId = DEFAULT_BUILD_ID_NUMBER;
@@ -53,28 +53,14 @@ namespace Kubernetes.Bootstrapper
         protected readonly string OverrideDockerTags;
         [Parameter("Set the build Number.")]
         protected readonly string BuildNumber = DEFAULT_BUILD_ID_NUMBER;
-
-        protected bool IsDefaultBuildId => BuildId == DEFAULT_BUILD_ID_NUMBER;
-        protected bool IsDefaultBuildNumber => BuildNumber == DEFAULT_BUILD_ID_NUMBER;
-
         [Parameter("Docker registry")]
         protected readonly string DockerRegistryServer;
         [Parameter("Docker registry user name")]
         protected readonly string DockerRegistryUserName;
         [Parameter("Docker registry password")]
         protected readonly string DockerRegistryPassword;
-
-        virtual protected AbsolutePath OneForAllDockerFile => BuildAssemblyDirectory / "docker" / "build.nuke.app.dockerfile";
-
-        [GitRepository]
-        protected readonly GitRepository GitRepository;
-
-        protected string Branch => OverrideBranch ?? GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
-
         [Parameter("Override branch (by default the git branch is user.")]
         protected readonly string OverrideBranch;
-
-        protected string BEEZUP_BUILD_ID => $"{Environment.MachineName}-{Branch}-{DateTime.UtcNow.ToString("yyyy-MM-dd-hh:mm:ss")}";
 
         virtual protected AbsolutePath SourceDirectory => RootDirectory / "src";
         virtual protected AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -85,6 +71,13 @@ namespace Kubernetes.Bootstrapper
         virtual protected AbsolutePath ConfigsDirectory => RootDirectory / "configs";
         virtual protected AbsolutePath HelmChartsDirectory => BuildAssemblyDirectory / "helm" / "charts";
         virtual protected AbsolutePath KubeResourcesDirectory => BuildAssemblyDirectory / "kubernetes";
+
+        protected bool IsDefaultBuildId => BuildId == DEFAULT_BUILD_ID_NUMBER;
+        protected bool IsDefaultBuildNumber => BuildNumber == DEFAULT_BUILD_ID_NUMBER;
+        protected string Branch => OverrideBranch ?? GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
+        protected string BEEZUP_BUILD_ID => $"{Environment.MachineName}-{Branch}-{DateTime.UtcNow.ToString("yyyy-MM-dd-hh:mm:ss")}";
+
+        virtual protected AbsolutePath OneForAllDockerFile => BuildAssemblyDirectory / "docker" / "build.nuke.app.dockerfile";
 
         protected virtual void ShowInformations()
         {
@@ -98,13 +91,9 @@ namespace Kubernetes.Bootstrapper
             Info($"BuildProjectDirectory : {BuildProjectDirectory}");
             Info($"NukeBuildProjectDirectory  : {NukeBuildProjectDirectory}");
             Info($"BuildAssemblyDirectory : {BuildAssemblyDirectory}");
-            Info($"NoError : {NoError}");
             Info($"DockerRegistryServer : {DockerRegistryServer ?? "-none-"}");
         }
 
-        /*********************************************************************************/
-        //                      Simple Targets
-        /*********************************************************************************/
 
         protected virtual Target Show => _ => _
             .Executes(() =>
@@ -116,7 +105,14 @@ namespace Kubernetes.Bootstrapper
         protected virtual Target ListAppsProjects => _ => _.Executes(() => { ListNames(GetApplicationProjects()); });
         protected virtual Target ListTestsProjects => _ => _.Executes(() => { ListNames(GetTestsProjects()); });
         protected virtual Target ListAllProjects => _ => _.Executes(() => { ListNames(GetAllProjects()); });
-        static void ListNames(string[] files) { foreach (var file in files) Info(file); }
+
+        private void ListNames(string[] files)
+        {
+            foreach (var file in files)
+            {
+                Info(file);
+            }
+        }
 
         protected virtual Target CleanArtifacts => _ => _
             .DependsOn(Show)
@@ -125,19 +121,6 @@ namespace Kubernetes.Bootstrapper
                 EnsureCleanDirectory(ArtifactsDirectory);
             });
 
-        protected virtual Target CleanObjAndBin => _ => _
-            .Executes(() =>
-            {
-                var buildDir = NukeBuildProjectDirectory.ToString();
-                var othersDirectories = GlobDirectories(SourceDirectory, "**/bin", "**/obj")
-                    .Where(d => !d.StartsWith(buildDir));
-
-                DeleteDirectories(othersDirectories);
-            });
-
-        protected virtual Target CleanAll => _ => _
-            .DependsOn(CleanArtifacts, CleanObjAndBin);
-
         protected virtual Target Restore => _ => _
             .Executes(() =>
             {
@@ -145,10 +128,9 @@ namespace Kubernetes.Bootstrapper
                 {
                     Exec(() =>
                     {
-                        DotNetRestore(s => s
+                        DotNetRestore(dotNetRestoreSettings => dotNetRestoreSettings
                             .SetProjectFile(proj)
-                            .SetConfigFile(NugetConfigFile)
-                            );
+                            .SetConfigFile(NugetConfigFile));
                     });
                 }
             });
@@ -193,6 +175,7 @@ namespace Kubernetes.Bootstrapper
             .Executes(() =>
             {
                 var solutions = GetSolutions().ToArray();
+
                 if (solutions.Length == 0)
                 {
                     Error($"No solution found ! in {RootDirectory}");
@@ -200,6 +183,7 @@ namespace Kubernetes.Bootstrapper
                 }
 
                 Info($"Found {solutions.Length} solutions :");
+
                 foreach (var sln in solutions)
                 {
                     Info($"- {sln}.");
@@ -285,59 +269,40 @@ namespace Kubernetes.Bootstrapper
         {
             var exceptions = new ConcurrentBag<Exception>();
 
-            ParallelDo(
-                projects,
-                proj =>
-                {
-                    try
+                Parallel.ForEach(
+                    projects,
+                    proj =>
                     {
-                        var projectName = Path.GetFileNameWithoutExtension(proj);
-                        DotNetTest(s =>
+                        try
                         {
-                            s = s
-                                .SetConfiguration(ReleaseConfiguration)
-                                .SetResultsDirectory(TestsOuputDirectory)
-                                .SetLogger($"trx;LogFileName={projectName}.trx  ")
-                                .SetProperty("CollectCoverage", true)
-                                .SetProperty("CoverletOutputFormat", "opencover")
-                                .SetProjectFile(proj);
+                            var projectName = Path.GetFileNameWithoutExtension(proj);
+                            DotNetTest(dotNetTestSettings =>
+                            {
+                                dotNetTestSettings = dotNetTestSettings
+                                    .SetConfiguration(ReleaseConfiguration)
+                                    .SetResultsDirectory(TestsOuputDirectory)
+                                    .SetLogger($"trx;LogFileName={projectName}.trx  ")
+                                    .SetProperty("CollectCoverage", true)
+                                    .SetProperty("CoverletOutputFormat", "opencover")
+                                    .SetProjectFile(proj);
 
-                            if (nobuild)
-                                s = s.EnableNoBuild();
+                                if (nobuild)
+                                    dotNetTestSettings = dotNetTestSettings.EnableNoBuild();
 
-                            return s;
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        exceptions.Add(ex);
-                    }
-                });
+                                return dotNetTestSettings;
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            exceptions.Add(ex);
+                        }
+                    });
+
 
             if (exceptions.Count != 0)
                 throw new AggregateException(exceptions);
 
         }
-
-        public const string ALL_IN_ONE_SLN = "all_in_one";
-        public virtual Target CreateAllInOneSolution => _ => _
-            .Executes(() =>
-            {
-                var allInOneSln = RootDirectory / (ALL_IN_ONE_SLN + ".sln");
-                if (FileExists(allInOneSln))
-                    DeleteFile(allInOneSln);
-
-                DotNet($"new sln --name {ALL_IN_ONE_SLN}");
-
-                var projects = GlobFiles(RootDirectory, $"**/*.csproj").NotEmpty().OrderBy(p => p);
-                var count = 1;
-                foreach (var proj in projects)
-                {
-                    Info($"Adding project #{count++} : {proj}");
-                    DotNet($"sln {allInOneSln} add \"{proj}\"");
-                    Thread.Sleep(200);
-                }
-            });
 
 
         #region FileSystem
@@ -535,40 +500,20 @@ namespace Kubernetes.Bootstrapper
         /// <summary>
         /// helm upgrade -i --force --set %NSVALUES% %NAMESPACE%-namespace charts/bz-namespace-beezup
         /// </summary>
-        protected void InstallNamespace(string product, string group)
+        protected void InstallNamespace(string group)
         {
-            HelmInstall(
-                $"{Namespace(product, group)}-namespace", HelmChartsDirectory / "bz-namespace-beezup",
-                product, group,
-                @namespace: "default"
-                );
+            HelmInstall($"{group}-namespace", HelmChartsDirectory / "namespace", group, @namespace: "default");
         }
 
-        /// <summary>
-        /// helm upgrade -i --force --set %NSVALUES% -f ../config/%PRODUCT%/product.yaml --namespace %NAMESPACE% %NAMESPACE%-product-config charts/imn-product 
-        /// </summary>
-        protected void InstallProduct(string product, string group, string valuesFile = null)
-        {
-            valuesFile = valuesFile ?? ConfigsDirectory / product / "product.yaml";
-            HelmInstall(
-                $"{Namespace(product, group)}-product-config", HelmChartsDirectory / "bz-product",
-                product, group,
-                configurator: s =>
-                {
-                    s = s.AddValues(valuesFile);
-                    return s;
-                });
-        }
 
         /// <summary>
         /// helm upgrade -i --force --set %NSVALUES% -f ../config/%PRODUCT%/%ENV%/environment.yaml --namespace %NAMESPACE% %NAMESPACE%-environment-config charts/imn-environment 
         /// </summary>
-        protected void InstallEnvironment(string product, string group, string env, string valuesFile = null)
+        protected void InstallEnvironment(string group, string env, string valuesFile = null)
         {
-            valuesFile = valuesFile ?? ConfigsDirectory / product / env / "environment.yaml";
-            HelmInstall(
-                $"{Namespace(product, group)}-environment-config", HelmChartsDirectory / "bz-environment",
-                product, group, env: env,
+            valuesFile = valuesFile ?? ConfigsDirectory / env / "environment.yaml";
+
+            HelmInstall($"{group}-environment-config", HelmChartsDirectory / "bz-environment", group, env: env,
                 configurator: s =>
                 {
                     s = s.AddValues(valuesFile);
@@ -578,183 +523,77 @@ namespace Kubernetes.Bootstrapper
 
         protected string GetDefaultAppChart(AppType appType)
         {
-            switch (appType)
-            {
-                case AppType.Api:
-                    return HelmChartsDirectory / "bz-api";
-                case AppType.Workers:
-                    return HelmChartsDirectory / "bz-worker";
-                default:
-                    throw new NotImplementedException($"No default chart is known for {appType} application type");
-            }
+            return $"{appType}".ToLowerInvariant();
         }
 
-        protected void InstallWorkers(string product, string group, string env, string app, string appName, string valuesFile = null, string chartOverride = null,
-            bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
-        {
-            InstallApp(AppType.Workers, product, group, env, app, appName, valuesFile, chartOverride, recreatePods, force, install, imageTag, overrideConfigurator);
-        }
 
         protected void InstallApi(string product, string group, string env, string app, string appName, string valuesFile = null, string chartOverride = null,
             bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
         {
-            InstallApp(AppType.Api, product, group, env, app, appName, valuesFile, chartOverride, recreatePods, force, install, imageTag, overrideConfigurator);
+            InstallApp(AppType.Api, group, env, app, appName, valuesFile, chartOverride, recreatePods, force, install, imageTag, overrideConfigurator);
         }
 
         /// <summary>
         /// helm upgrade -i --force --recreate-pods --set %NSVALUES%,app=%APP% -f ../config/%PRODUCT%/%ENV%/groups/%GROUP%/%APP%/app.yaml --namespace %NAMESPACE% %NAMESPACE%-%APPNAME% charts/%CHART%
         /// </summary>
-        protected void InstallApp(AppType appType, string product, string group, string env, string app, string appName, string valuesFile = null,
+        protected void InstallApp(AppType appType, string group, string env, string app, string appName, string valuesFile = null,
             string chartOverride = null, bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
         {
             var chart = chartOverride ?? GetDefaultAppChart(appType);
-            InstallHelmChart(product, group, env, app, appName, chart, valuesFile, recreatePods, force, install, imageTag, overrideConfigurator);
+            InstallHelmChart(group, env, app, appName, chart, valuesFile, recreatePods, force, install, imageTag, overrideConfigurator);
         }
 
-        protected void InstallHelmChart(string product, string group, string env, string app, string appName, string chart, string valuesFile = null, bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
+        protected void InstallHelmChart(string group, string env, string app, string appName, string chart, string valuesFile = null, bool recreatePods = false, bool force = false, bool install = false, string imageTag = null, Configure<HelmUpgradeSettings> overrideConfigurator = null)
         {
-            valuesFile = valuesFile ?? ConfigsDirectory / product / env / "groups" / group / app / "app.yaml";
+            valuesFile = valuesFile ?? ConfigsDirectory / env / "groups" / group / app / "app.yaml";
 
-            HelmInstall(
-                $"{Namespace(product, group)}-{appName}", chart,
-                product, group, app, env,
-                configurator: s =>
+            HelmInstall($"{group}-{appName}", chart, group, app, env,
+                configurator: helmUpgradeSettings =>
                 {
-                    s = s
-                        .AddSet("image.tag", GetDeliveryDockerTagName(imageTag))
-                        .AddSet("image.repository", DockerRegistryServer)
-                        .AddSet("image.branch", Branch)
-                        .AddValues(valuesFile)
-                        ;
+                    helmUpgradeSettings = helmUpgradeSettings
+                            .AddSet("image.tag", GetDeliveryDockerTagName(imageTag))
+                            .AddSet("image.repository", DockerRegistryServer)
+                            .AddSet("image.branch", Branch)
+                            .AddValues(valuesFile);
 
                     if (recreatePods)
-                        s = s.EnableRecreatePods();
+                        helmUpgradeSettings = helmUpgradeSettings.EnableRecreatePods();
                     if (force)
-                        s = s.EnableForce();
+                        helmUpgradeSettings = helmUpgradeSettings.EnableForce();
                     if (install)
-                        s = s.EnableInstall();
+                        helmUpgradeSettings = helmUpgradeSettings.EnableInstall();
 
                     if (overrideConfigurator != null)
-                        s = overrideConfigurator(s);
+                        helmUpgradeSettings = overrideConfigurator(helmUpgradeSettings);
 
-                    return s;
+                    return helmUpgradeSettings;
                 });
         }
 
-        protected string Namespace(string product, string group) => $"{product}-{group}";
 
-        private IReadOnlyCollection<Output> HelmInstall(string releaseName, string chart,
-            string product, string group, string app = default,
-            string env = default, string @namespace = default,
-            Configure<HelmUpgradeSettings> configurator = null)
+        private IReadOnlyCollection<Output> HelmInstall(string releaseName, string chart, string group, string app = default, string env = default, string @namespace = default, Configure<HelmUpgradeSettings> configurator = null)
         {
-            return HelmUpgrade(s =>
+            return HelmUpgrade(helmUpgradeSettings =>
             {
-                s = HelmEnvVars(s)
+                helmUpgradeSettings = HelmEnvVars(helmUpgradeSettings)
                     .EnableInstall()
                     .SetRelease(releaseName)
                     .SetChart(chart);
 
-                s = s.SetNamespace(@namespace ?? Namespace(product, group));
+                helmUpgradeSettings = helmUpgradeSettings.SetNamespace(@namespace ?? group);
 
-                if (product != default)
-                    s = s.AddSet($"{AppConfig.Product}", product);
                 if (env != default)
-                    s = s.AddSet($"{AppConfig.Environment}", env);
+                    helmUpgradeSettings = helmUpgradeSettings.AddSet($"{AppConfig.Environment}", env);
                 if (group != default)
-                    s = s.AddSet($"{AppConfig.Group}", group);
+                    helmUpgradeSettings = helmUpgradeSettings.AddSet($"{AppConfig.Group}", group);
                 if (app != default)
-                    s = s.AddSet($"{AppConfig.App}", app);
+                    helmUpgradeSettings = helmUpgradeSettings.AddSet($"{AppConfig.App}", app);
 
                 if (configurator != null)
-                    s = configurator.Invoke(s);
+                    helmUpgradeSettings = configurator.Invoke(helmUpgradeSettings);
 
-                return s;
+                return helmUpgradeSettings;
             });
-        }
-
-        #endregion
-
-
-        #region rollbar
-
-        private readonly HttpClient _httpClient = new HttpClient();
-
-        protected void NotifyRollbar(string appShortName, string environment, string rollbarAccessToken)
-        {
-            NotifyRollbarAsync(appShortName, environment, rollbarAccessToken).Wait();
-        }
-
-        private async Task NotifyRollbarAsync(string appShortName, string environment, string rollbarAccessToken)
-        {
-            try
-            {
-                var projects = await GetRollbarProjectsAsync(rollbarAccessToken);
-                var project = projects.FirstOrDefault(p => p.Name == appShortName);
-                if (project == null)
-                {
-                    Warn($"Unable to find rollbar '{appShortName}' project");
-                    return;
-                }
-
-                const string POST_SERVER_ITEM = "post_server_item";
-                var tokens = await GetRollbarProjectAccessTokens(project.Id, rollbarAccessToken);
-                var token = tokens.FirstOrDefault(t => t.Name == POST_SERVER_ITEM);
-                if (token == null)
-                {
-                    Warn($"Unable to find rollbar '{POST_SERVER_ITEM}' access token for '{appShortName}' project.");
-                    return;
-                }
-
-                await RollbarPublishDeploy(token.Access_Token, environment, BuildNumber);
-            }
-            catch (Exception ex)
-            {
-                Error(ex);
-            }
-        }
-
-        private class RollbarResponse<T>
-        {
-            public T Result { get; set; }
-        }
-
-        private class RollbarProject
-        {
-            public string Name { get; set; }
-            public string Id { get; set; }
-        }
-
-        private async Task<RollbarProject[]> GetRollbarProjectsAsync(string rollbarAccessToken)
-        {
-            var result = await _httpClient.GetStringAsync($"https://api.rollbar.com/api/1/projects/?access_token={rollbarAccessToken}");
-            var response = JsonConvert.DeserializeObject<RollbarResponse<RollbarProject[]>>(result);
-            return response.Result;
-        }
-
-        private class RollbarProjectAccessToken
-        {
-            public string Name { get; set; }
-            public string Access_Token { get; set; }
-            public string Status { get; set; }
-        }
-
-        // $tmpRollbarProjectToken = Get-RollBarProject_AccessTokens -ProjectId $tmpRollbarProject.id -TokenName "post_server_item"
-        private async Task<RollbarProjectAccessToken[]> GetRollbarProjectAccessTokens(string projectId, string rollbarAccessToken)
-        {
-            var result = await _httpClient.GetStringAsync($"https://api.rollbar.com/api/1/project/{projectId}/access_tokens?access_token={rollbarAccessToken}");
-            var response = JsonConvert.DeserializeObject<RollbarResponse<RollbarProjectAccessToken[]>>(result);
-            return response.Result;
-        }
-
-        private async Task RollbarPublishDeploy(string postServerItemAccessToken, string environment, string revision, string rollbarUsername = "NukeBuild")
-        {
-            await _httpClient.PostAsync(
-                "https://api.rollbar.com/api/1/deploy/",
-                new StringContent(JsonConvert.SerializeObject(
-                    new { access_token = postServerItemAccessToken, environment = environment, revision = revision, rollbar_username = rollbarUsername, local_username = rollbarUsername }
-                    ))
-                );
         }
 
         #endregion
@@ -838,31 +677,11 @@ namespace Kubernetes.Bootstrapper
 
         protected string GetRuntimeImage(string proj) => IsWebService(proj) ? WebservicesRuntimeDockerImage : AppsRuntimeDockerImage;
 
-        /// <summary>
-        /// Return true if the project is an application or web service
-        /// </summary>
-        protected virtual bool IsRunable(string proj) => IsWebService(proj) || IsStandardApp(proj) || IsGraphQL(proj);
+        protected virtual bool IsRunable(string proj) => IsWebService(proj) || IsStandardApp(proj);
 
-        /// <summary>
-        /// Return true if the project is an application
-        /// </summary>
         protected virtual bool IsStandardApp(string proj) => proj.EndsWith(".App.csproj", StringComparison.OrdinalIgnoreCase);
-        /// <summary>
-        /// Return true if the project is a webservice application
-        /// </summary>
-        protected virtual bool IsWebService(string proj) => proj.EndsWith(".WebService.csproj", StringComparison.OrdinalIgnoreCase) || proj.EndsWith(".RestAPI.csproj", StringComparison.OrdinalIgnoreCase);
-        /// <summary>
-        /// Return true if the project is a GraphQL application
-        /// </summary>
-        protected virtual bool IsGraphQL(string proj) => proj.EndsWith(".GraphQL.csproj", StringComparison.OrdinalIgnoreCase);
 
-        protected virtual AbsolutePath GetEmptyFolder()
-        {
-            var emptyFolder = RootDirectory / ".emptyFolder";
-            EnsureExistingDirectory(emptyFolder);
-            EnsureCleanDirectory(emptyFolder);
-            return emptyFolder;
-        }
+        protected virtual bool IsWebService(string proj) =>  proj.EndsWith(".RestAPI.csproj", StringComparison.OrdinalIgnoreCase);
 
         protected virtual void Exec(Action action)
         {
@@ -873,19 +692,8 @@ namespace Kubernetes.Bootstrapper
             catch (Exception ex)
             {
                 Error(ex.Message);
-                if (!NoError)
-                    throw;
+                throw;
             }
-        }
-
-        protected void ParallelDo<T>(T[] items, Action<T> action)
-        {
-            Parallel.ForEach(
-                items,
-                item =>
-                {
-                    action(item);
-                });
         }
 
         protected virtual void ExecuteTargetInContainer(string targetName, params string[] parameters)
@@ -901,8 +709,7 @@ namespace Kubernetes.Bootstrapper
                         .SetWorkdir("/build")
                         .SetEntrypoint("./build.sh")
                         .AddArgs(targetName)
-                        .SetName(containerName)
-                        ;
+                        .SetName(containerName);
 
                     if (parameters.Length != 0)
                         s = s.AddArgs(parameters);
@@ -916,58 +723,6 @@ namespace Kubernetes.Bootstrapper
                     .SetContainers(containerName)
                     .EnableForce()
                     );
-            }
-        }
-
-        public static string GetHash(params string[] filesOrDirectories)
-        {
-            filesOrDirectories = filesOrDirectories.Distinct().OrderBy(s => s).ToArray();
-
-            using (var sha = SHA256.Create())
-            {
-                void appendFileSha(string file, string relativePath)
-                {
-                    var nameBytes = Encoding.UTF8.GetBytes(relativePath);
-                    sha.TransformBlock(nameBytes, 0, nameBytes.Length, nameBytes, 0);
-
-                    using (var fileStream = File.OpenRead(file))
-                    {
-                        var buffer = new byte[1024 * 4];
-                        while (true)
-                        {
-                            var len = fileStream.Read(buffer, 0, buffer.Length);
-                            if (len == 0)
-                                break;
-                            sha.TransformBlock(buffer, 0, len, buffer, 0);
-                        }
-                    }
-                };
-
-                foreach (var path in filesOrDirectories)
-                {
-                    if (File.Exists(path))
-                    {
-                        appendFileSha(path, Path.GetFileName(path));
-                    }
-                    else if (Directory.Exists(path))
-                    {
-                        var files = Directory.GetFiles(path).OrderBy(s => s);
-                        foreach (var file in files)
-                        {
-                            var relPath = (file.StartsWith(path)) ? file.Substring(path.Length) : file;
-                            appendFileSha(file, relPath);
-                        }
-                    }
-                    else
-                    {
-                        Error($"File or directory {path} does not exists.");
-                    }
-                }
-
-                sha.TransformFinalBlock(new byte[0], 0, 0);
-                var hash = sha.Hash;
-
-                return Convert.ToBase64String(hash);
             }
         }
 

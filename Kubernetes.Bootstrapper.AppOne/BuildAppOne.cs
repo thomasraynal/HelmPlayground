@@ -10,6 +10,7 @@ namespace Kubernetes.Bootstrapper.AppOne
 
         AbsolutePath BEEZUP_PROD_KUBECONFIG => RootDirectory / "k8s";
 
+        [Parameter("Missing environment")] private readonly string EnvironmentToDeliver;
         [Parameter("Missing group")] private readonly string GroupToDeliver;
         [Parameter("Missing app array")] private readonly string[] AppsToDeliver;
 
@@ -18,36 +19,30 @@ namespace Kubernetes.Bootstrapper.AppOne
         .OnlyWhenStatic(() => !IsDefaultBuildId || OverrideDockerTags != null)
         .Executes(() =>
         {
-            Deploy(GroupToDeliver, AppsToDeliver);
+            Deploy(EnvironmentToDeliver, GroupToDeliver, AppsToDeliver);
         });
 
-        private void Deploy(string appGroup, string[] appNames)
+        private void Deploy(string environment, string group, string[] appNames)
         {
             using (WithKUBECONFIG(BEEZUP_PROD_KUBECONFIG))
             {
-                var rollbarToken = "token";
-                var rollbarEnv = "production";
-
-                var lowerCaseAppGroup = appGroup.ToLower();
+  
+                var lowerCaseAppGroup = group.ToLower();
 
                 var env = "production";
 
-                var (product, group) = ("beezup-mkp-adpt", lowerCaseAppGroup);
-
-                InstallNamespace(product, group);
-                InstallProduct(product, group);
-                InstallEnvironment(product, group, env);
+                InstallNamespace(lowerCaseAppGroup);
+                InstallEnvironment(lowerCaseAppGroup, environment);
 
                 (string app, string appName, AppType appType, string appShortName)[] apps =
 
                     appNames
-                        .Select(appName => ($"bz.mkp.adpt.{lowerCaseAppGroup}.{appName.ToLower()}.restapi", $"{appName.ToLower()}-restapi", AppType.Api, $"{appGroup}.{appName}.RestAPI"))
+                        .Select(appName => ($"{lowerCaseAppGroup}.{appName.ToLower()}.restapi", $"{appName.ToLower()}-restapi", AppType.Api, $"{group}.{appName}.RestAPI"))
                         .ToArray();
 
                 foreach (var app in apps)
                 {
-                    InstallApp(app.appType, product, group, env, app.app, app.appName);
-                    NotifyRollbar(app.appShortName, rollbarEnv, rollbarToken);
+                    InstallApp(app.appType, group, env, app.app, app.appName);
                 }
 
             }

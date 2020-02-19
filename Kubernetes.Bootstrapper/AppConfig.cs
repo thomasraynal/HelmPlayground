@@ -6,8 +6,6 @@ namespace Kubernetes.Bootstrapper
 {
     public enum AppConfig
     {
-        Product,
-        Env,
         Environment,
         Group,
         App

@@ -6,7 +6,6 @@ namespace Kubernetes.Bootstrapper
 {
     public enum AppType
     {
-        Api,
-        Workers
+        Api
     }
 }
