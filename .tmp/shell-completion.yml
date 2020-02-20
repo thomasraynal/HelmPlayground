@@ -1,0 +1,41 @@
+AppsRuntimeDockerImage: 
+BuildId: 
+Continue: 
+DockerRegistryPassword: 
+DockerRegistryServer: 
+DockerRegistryUserName: 
+Help: 
+Host:
+- AppVeyor
+- AzureDevOps
+- Bitrise
+- Console
+- GitLab
+- Jenkins
+- TeamCity
+- Travis
+NoLogo: 
+Plan: 
+Root: 
+Skip:
+- Clean
+- DockerCleanAllAppImages
+- DockerPushAllAppImages
+- Package
+- Publish
+- Restore
+- Test
+Target:
+- Clean
+- DockerCleanAllAppImages
+- DockerPushAllAppImages
+- Package
+- Publish
+- Restore
+- Test
+Verbosity:
+- Minimal
+- Normal
+- Quiet
+- Verbose
+WebservicesRuntimeDockerImage: 

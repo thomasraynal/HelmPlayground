@@ -3,13 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Reactive.Disposables;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Nuke.Common;
 using Nuke.Common.Git;
 using Nuke.Common.IO;
@@ -45,22 +40,17 @@ namespace Kubernetes.Bootstrapper
         protected readonly string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
         [Parameter("Standard apps runtime image")]
         protected readonly string AppsRuntimeDockerImage = "microsoft/dotnet:2.2-runtime";
-
-
         [Parameter("Set the build Id.")]
         protected readonly string BuildId = DEFAULT_BUILD_ID_NUMBER;
-        [Parameter("Override docker tags (by default build Id is used.")]
-        protected readonly string OverrideDockerTags;
         [Parameter("Set the build Number.")]
         protected readonly string BuildNumber = DEFAULT_BUILD_ID_NUMBER;
+
         [Parameter("Docker registry")]
-        protected readonly string DockerRegistryServer;
+        public string DockerRegistryServer;
         [Parameter("Docker registry user name")]
-        protected readonly string DockerRegistryUserName;
+        public string DockerRegistryUserName;
         [Parameter("Docker registry password")]
-        protected readonly string DockerRegistryPassword;
-        [Parameter("Override branch (by default the git branch is user.")]
-        protected readonly string OverrideBranch;
+        public string DockerRegistryPassword;
 
         virtual protected AbsolutePath SourceDirectory => RootDirectory / "src";
         virtual protected AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -74,7 +64,7 @@ namespace Kubernetes.Bootstrapper
 
         protected bool IsDefaultBuildId => BuildId == DEFAULT_BUILD_ID_NUMBER;
         protected bool IsDefaultBuildNumber => BuildNumber == DEFAULT_BUILD_ID_NUMBER;
-        protected string Branch => OverrideBranch ?? GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
+        protected string Branch => GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
         protected string BEEZUP_BUILD_ID => $"{Environment.MachineName}-{Branch}-{DateTime.UtcNow.ToString("yyyy-MM-dd-hh:mm:ss")}";
 
         virtual protected AbsolutePath OneForAllDockerFile => BuildAssemblyDirectory / "docker" / "build.nuke.app.dockerfile";
@@ -93,7 +83,6 @@ namespace Kubernetes.Bootstrapper
             Info($"BuildAssemblyDirectory : {BuildAssemblyDirectory}");
             Info($"DockerRegistryServer : {DockerRegistryServer ?? "-none-"}");
         }
-
 
         protected virtual Target Show => _ => _
             .Executes(() =>
@@ -394,7 +383,6 @@ namespace Kubernetes.Bootstrapper
                 });
             }
         }
-
         protected void PushContainers(params string[] projects) => PushContainers(projects, false);
 
         protected void PushContainers(string[] projects, bool tagLatest = false)
@@ -657,12 +645,12 @@ namespace Kubernetes.Bootstrapper
 
         protected string GetProjectDockerTagName()
         {
-            return OverrideDockerTags?.ToLower() ?? BuildId.ToLower();
+            return BuildId.ToLower();
         }
 
         protected string GetDeliveryDockerTagName(string tagName)
         {
-            return tagName?.ToLower() ?? OverrideDockerTags?.ToLower() ?? BuildId.ToLower();
+            return tagName?.ToLower() ?? BuildId.ToLower();
         }
 
         protected static string GetProjectDockerPrefix(string project)

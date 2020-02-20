@@ -1,0 +1,1 @@
+nuke Deliver -DockerRegistryServer registry.hub.docker.com -BuildId %1 -BuildNumber %1
