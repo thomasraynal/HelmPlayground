@@ -33,14 +33,13 @@ class Build : NukeBuild
     public string DockerRegistryPassword;
 
     [Parameter("Webservices runtime image")]
-    protected readonly string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
+    public string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
     [Parameter("Standard apps runtime image")]
-    protected readonly string AppsRuntimeDockerImage = "microsoft/dotnet:2.2-runtime";
+    public string AppsRuntimeDockerImage = "microsoft/dotnet:2.2-runtime";
 
     [Parameter("Set the build Id.")]
-    protected readonly string BuildId;
+    public string BuildId;
 
-    [Solution] readonly Solution Solution;
     [GitRepository] readonly GitRepository GitRepository;
 
     AbsolutePath SourceDirectory => RootDirectory / "src";
@@ -101,19 +100,17 @@ class Build : NukeBuild
     });
 
 
-
-    public virtual Target DockerPushAllAppImages => _ => _
-        .After(Package)
-        .Requires(() => DockerRegistryServer, () => DockerRegistryUserName, () => DockerRegistryPassword)
+    public virtual Target Push => _ => _
+        .DependsOn(Package)
         .Executes(() =>
         {
             var applications = GetApplicationProjects();
-          //  PushContainers(applications.ToArray());
+            PushContainers(applications.ToArray());
         });
 
 
-    public virtual Target DockerCleanAllAppImages => _ => _
-        .After(Package, DockerPushAllAppImages)
+    public virtual Target CleanPackage => _ => _
+        .After(Push)
         .Executes(() =>
         {
             var images = GetApplicationProjects()
@@ -125,6 +122,32 @@ class Build : NukeBuild
                 .EnableForce()
                 );
         });
+
+
+    protected void PushContainers(string[] projects)
+    {
+        DockerLogin(s => s
+            .SetServer(DockerRegistryServer)
+            .SetUsername(DockerRegistryUserName)
+            .SetPassword(DockerRegistryPassword)
+        );
+
+        foreach (var proj in projects)
+        {
+            var imageNameAndTag = $"{GetProjectDockerImageName(proj)}:{GetProjectDockerTagName()}";
+            var imageNameAndTagOnRegistry = $"{DockerRegistryServer}/{imageNameAndTag}";
+
+            DockerTag(s => s
+                .SetSourceImage(imageNameAndTag)
+                .SetTargetImage(imageNameAndTagOnRegistry)
+            );
+            DockerPush(s => s
+                .SetName(imageNameAndTagOnRegistry)
+            );
+
+
+        }
+    }
 
     protected string GetProjectDockerImageName(string project)
     {
@@ -197,9 +220,9 @@ class Build : NukeBuild
                         dotNetTestSettings = dotNetTestSettings
                             .SetConfiguration(Configuration)
                             //.SetResultsDirectory(TestsOuputDirectory)
-                            .SetLogger($"trx;LogFileName={projectName}.trx  ")
-                            .SetProperty("CollectCoverage", true)
-                            .SetProperty("CoverletOutputFormat", "opencover")
+                            //.SetLogger($"trx;LogFileName={projectName}.trx  ")
+                            //.SetProperty("CollectCoverage", true)
+                            //.SetProperty("CoverletOutputFormat", "opencover")
                             .SetProjectFile(proj);
 
                         if (nobuild)
@@ -228,11 +251,6 @@ class Build : NukeBuild
             .Distinct()
             .OrderBy(s => s)
             .ToArray();
-
-        foreach(var project in projects)
-        {
-            Console.WriteLine(project);
-        }
 
         return projects;
     }

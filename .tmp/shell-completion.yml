@@ -19,18 +19,18 @@ Plan:
 Root: 
 Skip:
 - Clean
-- DockerCleanAllAppImages
-- DockerPushAllAppImages
+- CleanPackage
 - Package
 - Publish
+- Push
 - Restore
 - Test
 Target:
 - Clean
-- DockerCleanAllAppImages
-- DockerPushAllAppImages
+- CleanPackage
 - Package
 - Publish
+- Push
 - Restore
 - Test
 Verbosity:
