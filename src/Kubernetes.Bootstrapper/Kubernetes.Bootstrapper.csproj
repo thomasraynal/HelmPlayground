@@ -21,9 +21,5 @@
   <ItemGroup>
     <Folder Include="helm\charts\group\" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Include="kube\.kube\test" />
-  </ItemGroup>
   
 </Project>

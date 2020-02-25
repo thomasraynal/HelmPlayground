@@ -8,4 +8,13 @@
     <ProjectReference Include="..\Kubernetes.Bootstrapper\Kubernetes.Bootstrapper.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="config\config .app.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="config\config.group.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

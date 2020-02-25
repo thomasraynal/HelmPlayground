@@ -20,6 +20,7 @@ Root:
 Skip:
 - Clean
 - CleanPackage
+- Deploy
 - Package
 - Publish
 - Push
@@ -28,6 +29,7 @@ Skip:
 Target:
 - Clean
 - CleanPackage
+- Deploy
 - Package
 - Publish
 - Push

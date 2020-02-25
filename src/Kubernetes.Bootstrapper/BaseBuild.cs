@@ -565,6 +565,7 @@ namespace Kubernetes.Bootstrapper
             {
                 helmUpgradeSettings = HelmEnvVars(helmUpgradeSettings)
                     .EnableInstall()
+                    .EnableForce()
                     .SetRelease(releaseName)
                     .SetChart(chart);
 
