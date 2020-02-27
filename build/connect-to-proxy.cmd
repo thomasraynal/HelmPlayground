@@ -14,7 +14,7 @@ SET KUBEPORT=8001
 REM -----
 REM set variables
 REM -----
-set KUBECONFIG=%CD%\.kube\%KUBEFILE%
+set KUBECONFIG=%CD%\kube\%KUBEFILE%
 echo %KUBECONFIG%
 
 REM -----

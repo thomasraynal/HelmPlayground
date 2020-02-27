@@ -1,20 +1,19 @@
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  namespace: "{{ .Values.group }}-{{ .Values.app }}"
+  namespace: {{ template "namespace" . }}
   name: {{ template "api-name" . }}
   labels:
     app: {{ template "api-name" . }}
     chart: {{ template "api-chart" . }}
     release: {{ template "api-name" . }}
     heritage: {{ .Release.Service }}
-    environment: {{ .Values.environment }}
     group: {{ .Values.group }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{.Values.app }}
+      app: {{ template "api-name" . }}
       release: {{ .Release.Name }}
   template:
     metadata:
@@ -24,7 +23,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}/{{ .Values.app }}-{{ .Values.image.branch }}:{{ .Values.image.tag }}"
+          image: cypress/base:10 #"{{ .Values.image.repository }}/{{ .Values.app }}-{{ .Values.image.branch }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -48,14 +47,11 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 20
           env:
-            - name: CONFIG_BeezUPAppConfiguration__IPAddress
+            - name: config
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
           volumeMounts:
-            - name: config-env
-              mountPath: /app/config.env.yaml
-              subPath: config.env.yaml
             - name: config-group
               mountPath: /app/config.group.yaml
               subPath: config.group.yaml
@@ -63,14 +59,11 @@ spec:
               mountPath: /app/config.app.yaml
               subPath: config.app.yaml
       volumes:
-        - name: config-env
-          configMap:
-            name: config-env-{{ required "" .Values.environment }}
         - name: config-group
           configMap:
-            name: config-group-{{ required "" .Values.group }}
+            name: config-group-{{ .Values.group }}
         - name: config-app
           configMap:
-            name: config-app-{{ required "" .Values.app | replace "." "-" }}
+            name: config-app-{{ template "api-name" . }}
       imagePullSecrets:
       - name: registrysecret

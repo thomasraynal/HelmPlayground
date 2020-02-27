@@ -2,8 +2,8 @@
 {{- .Values.app | replace "." "-" -}}
 {{- end -}}
 
-{{- define "api-fullname" -}}
-{{- .Values.app | replace "." "-" -}}
+{{- define "namespace" -}}
+{{- .Values.group | replace "." "-" -}}-namespace
 {{- end -}}
 
 {{- define "api-chart" -}}

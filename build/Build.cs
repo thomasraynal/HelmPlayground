@@ -54,7 +54,9 @@ public class Build : NukeBuild
     private AbsolutePath SourceDirectory => RootDirectory / "src";
     private AbsolutePath TestsDirectory => RootDirectory / "tests";
     private AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
-    //private AbsolutePath ConfigsDirectory => RootDirectory / "configs";
+    
+    //todo : config in the csproj folder
+    private AbsolutePath ConfigsDirectory => RootDirectory / "configs";
     private AbsolutePath HelmChartsDirectory => BuildDirectory / "helm" / "charts";
     //private AbsolutePath KubeResourcesDirectory => BuildAssemblyDirectory / "kubernetes";
     private string Branch => GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
@@ -147,6 +149,7 @@ public class Build : NukeBuild
 
         var lowerCaseAppGroup = group.ToLower();
 
+        HelmRepoUpdate(s => HelmEnvVars(s));
         InstallNamespace(lowerCaseAppGroup);
 
         (string app, string appName, string appShortName)[] apps =
@@ -358,33 +361,68 @@ public class Build : NukeBuild
         HelmInstall($"{group}-namespace", HelmChartsDirectory / "namespace", group, "default", true);
     }
 
-    private IReadOnlyCollection<Output> HelmInstall(string appName, string chart, string group, string @namespace, bool isNamespace = false)
+    private void InstallGroup(string group, string groupFile)
     {
 
-        //var groupConfig = ConfigsDirectory / "config.group.yaml";
-        //var appConfig = ConfigsDirectory / "config.app.yaml";
+        HelmInstall(
+            $"{group}-group-config", HelmChartsDirectory / "group",
+           group, $"{group}-namespace",
+            configurator: s =>
+            {
+                s = s.AddValues(groupFile);
+                return s;
+            });
+    }
+
+    private IReadOnlyCollection<Output> HelmInstall(string appName, string chart, string group, string @namespace, bool isNamespace = false, Configure<HelmUpgradeSettings> configurator = null)
+    {
+
+        var groupConfig = BuildDirectory / "configs" / "config.group.yaml";
+        var appConfig = BuildDirectory / "configs" / "config.app.yaml";
+
+
+        Console.WriteLine($"{appName} {chart} {group} {@namespace} {isNamespace}");
 
         return HelmUpgrade(helmUpgradeSettings =>
         {
             helmUpgradeSettings = HelmEnvVars(helmUpgradeSettings)
                 .EnableInstall()
-                .EnableForce()
+                // .EnableForce()
                 .SetRelease(appName)
                 .SetChart(chart)
-                .AddSet("Group", group)
-                .SetNamespace(@namespace);
+                .AddSet("group", group)
+                .AddSet("app", appName)
+                .SetNamespace(@namespace)
+                //.SetRecreatePods(true)
+                .AddValues(appConfig, groupConfig);
 
             if (!isNamespace)
             {
+            
                 helmUpgradeSettings = helmUpgradeSettings.AddSet("image.tag", BuildId.ToLower());
-                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.repository", BuildId.ToLower());
-                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.branch", BuildId.ToLower());
+                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.repository", DockerRegistryServer);
+                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.branch", Branch);
             }
 
             return helmUpgradeSettings;
 
         });
     }
+
+    //protected void InstallGroup(string product, string tenant, string group, string env, string valuesFile = null)
+    //{
+    //    valuesFile = valuesFile ?? ConfigsDirectory / product / env / "groups" / group / "group.yaml";
+    //    HelmInstall(
+    //        $"{Namespace(product, tenant, group)}-group-config", HelmChartsDirectory / "bz-group",
+    //        product, tenant, group, env: env,
+    //        configurator: s =>
+    //        {
+    //            s = s.AddValues(valuesFile);
+    //            return s;
+    //        });
+    //}
+
+
 
 
 
