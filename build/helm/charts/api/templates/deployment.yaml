@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          image: cypress/base:10 #"{{ .Values.image.repository }}/{{ .Values.app }}-{{ .Values.image.branch }}:{{ .Values.image.tag }}"
+          image: eventstore/eventstore #"{{ .Values.image.repository }}/{{ .Values.app }}-{{ .Values.image.branch }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -32,20 +32,23 @@ spec:
             - name: health
               containerPort: 1337
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 1337
-            timeoutSeconds: 30
-            initialDelaySeconds: 30
-            periodSeconds: 60
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 1337
-            timeoutSeconds: 15
-            initialDelaySeconds: 30
-            periodSeconds: 20
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
+#          livenessProbe:
+#            httpGet:
+#              path: /health
+#              port: 1337
+#            timeoutSeconds: 30
+#            initialDelaySeconds: 30
+#            periodSeconds: 60
+#          readinessProbe:
+#            httpGet:
+#              path: /health
+#              port: 1337
+#            timeoutSeconds: 15
+#            initialDelaySeconds: 30
+#            periodSeconds: 20
           env:
             - name: config
               valueFrom:

@@ -475,6 +475,7 @@ namespace Kubernetes.Bootstrapper
         {
             HelmUpgrade(s => HelmEnvVars(s)
                 .EnableInstall()
+                .EnableRecreatePods()
                 .AddSet("rbac.create", false).AddSet("rbac.createRole", false).AddSet("rbac.createClusterRole", false)
                 .SetNamespace("kube-system")
                 .SetRelease("nginx-ingress")

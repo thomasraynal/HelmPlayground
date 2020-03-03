@@ -152,6 +152,8 @@ public class Build : NukeBuild
         HelmRepoUpdate(s => HelmEnvVars(s));
         InstallNamespace(lowerCaseAppGroup);
 
+        InstallGroup(group, BuildDirectory / "config" / "config.group.yaml");
+
         (string app, string appName, string appShortName)[] apps =
             appNames
                 .Select(appName => ($"{lowerCaseAppGroup}.{appName.ToLower()}", $"{appName.ToLower()}", $"{group}.{appName}"))
@@ -377,7 +379,7 @@ public class Build : NukeBuild
     private IReadOnlyCollection<Output> HelmInstall(string appName, string chart, string group, string @namespace, bool isNamespace = false, Configure<HelmUpgradeSettings> configurator = null)
     {
 
-        var groupConfig = BuildDirectory / "configs" / "config.group.yaml";
+       // var groupConfig = ;
         var appConfig = BuildDirectory / "configs" / "config.app.yaml";
 
 
@@ -394,7 +396,7 @@ public class Build : NukeBuild
                 .AddSet("app", appName)
                 .SetNamespace(@namespace)
                 //.SetRecreatePods(true)
-                .AddValues(appConfig, groupConfig);
+                .AddValues(appConfig);
 
             if (!isNamespace)
             {

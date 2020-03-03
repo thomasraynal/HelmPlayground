@@ -2,9 +2,9 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: {{ template "namespace" . }}
-  name: config-group-{{ required "A group name is needed" .Values.group }}
+  name: config-group-{{ .Values.group }}
   labels:
-    chart: {{ template "group.chart" . }}
+    chart: {{ template "api-chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
     group: {{ .Values.group }}
