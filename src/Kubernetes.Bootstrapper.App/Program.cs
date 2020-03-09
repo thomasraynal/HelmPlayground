@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace Kubernetes.Bootstrapper.App
 {
@@ -11,13 +12,6 @@ namespace Kubernetes.Bootstrapper.App
         {
             var webHost = new WebHostBuilder()
                 .UseKestrel()
-                .UseUrls("http://localhost:5000")
-                .ConfigureLogging((hostingContext, logging) =>
-                {
-                    logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
-                    logging.AddConsole();
-                    logging.AddDebug();
-                })
                 .UseStartup<Startup>()
                 .Build();
 

@@ -19,20 +19,16 @@ Plan:
 Root: 
 Skip:
 - Clean
-- CleanPackage
 - Deploy
 - Package
 - Publish
-- Push
 - Restore
 - Test
 Target:
 - Clean
-- CleanPackage
 - Deploy
 - Package
 - Publish
-- Push
 - Restore
 - Test
 Verbosity:

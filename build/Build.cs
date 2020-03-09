@@ -74,8 +74,25 @@ public class Build : NukeBuild
     Target Clean => _ => _
         .Executes(() =>
         {
-            SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
-            TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+            //foreach (var dir in directories.Distinct().ToArray())
+            //    try
+            //    {
+            //        if (!DirectoryExists((AbsolutePath)dir))
+            //        {
+            //            Warn($"Not existing directory : {dir}");
+            //            continue;
+            //        }
+
+            //        DeleteDirectory(dir);
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        Warn(ex.Message);
+            //    }
+
+            //SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+            //TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+
             EnsureCleanDirectory(ArtifactsDirectory);
         });
 
@@ -109,39 +126,34 @@ public class Build : NukeBuild
         .Executes(() =>
         {
             var applications = GetApplicationProjects();
-            BuildContainers(applications.ToArray());
+
+            BuildContainers(applications);
+
+            PushContainers(applications);
         });
 
 
-    public virtual Target Push => _ => _
+    public Target Deploy => _ => _
         .DependsOn(Package)
-        .Executes(() =>
-        {
-            var applications = GetApplicationProjects();
-            PushContainers(applications.ToArray());
-        });
-
-    public virtual Target Deploy => _ => _
-        //.DependsOn(Push)
         .Executes(() =>
         {
             DeployApps("one","app1");
         });
 
 
-    public virtual Target CleanPackage => _ => _
-        .After(Push)
-        .Executes(() =>
-        {
-            var images = GetApplicationProjects()
-                .Select(p => $"{GetProjectDockerImageName(p)}:{BuildId.ToLower()}")
-                .ToArray();
+        //Target CleanPackage => _ => _
+        //.After(Package)
+        //.Executes(() =>
+        //{
+        //    var images = GetApplicationProjects()
+        //        .Select(p => $"{GetProjectDockerImageName(p)}:{BuildId.ToLower()}")
+        //        .ToArray();
 
-            DockerRmi(s => s
-                .SetImages(images)
-                .EnableForce()
-                );
-        });
+        //    DockerRmi(s => s
+        //        .SetImages(images)
+        //        .EnableForce()
+        //        );
+        //});
 
 
     private void DeployApps(string group, params string[] appNames)
@@ -168,6 +180,9 @@ public class Build : NukeBuild
 
     private void PushContainers(string[] projects)
     {
+        Console.WriteLine(DockerRegistryUserName);
+        Console.WriteLine(DockerRegistryPassword);
+
         DockerLogin(dockerLoginSettings => dockerLoginSettings
             .SetServer(DockerRegistryServer)
             .SetUsername(DockerRegistryUserName)
@@ -177,7 +192,7 @@ public class Build : NukeBuild
         foreach (var proj in projects)
         {
             var imageNameAndTag = $"{GetProjectDockerImageName(proj)}:{BuildId.ToLower()}";
-            var imageNameAndTagOnRegistry = $"{DockerRegistryServer}/{imageNameAndTag}";
+            var imageNameAndTagOnRegistry = $"{DockerRegistryServer}/{DockerRegistryUserName}/{imageNameAndTag}";
 
             DockerTag(s => s
                 .SetSourceImage(imageNameAndTag)
