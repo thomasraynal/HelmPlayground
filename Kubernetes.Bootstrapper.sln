@@ -12,7 +12,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.cspr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubernetes.Bootstrapper", "src\Kubernetes.Bootstrapper\Kubernetes.Bootstrapper.csproj", "{B91B3950-E519-467B-9DD7-85E6181E4D19}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubernetes.Bootstrapper.App", "src\Kubernetes.Bootstrapper.App\Kubernetes.Bootstrapper.App.csproj", "{DA8C4918-54C3-4192-A175-815E0F3F8769}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubernetes.Bootstrapper.One.App", "src\Kubernetes.Bootstrapper.App\Kubernetes.Bootstrapper.One.App.csproj", "{DA8C4918-54C3-4192-A175-815E0F3F8769}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Kubernetes.Bootstrapper.App.Tests", "tests\Kubernetes.Bootstrapper.App.Tests\Kubernetes.Bootstrapper.App.Tests.csproj", "{344D6B07-FE3B-4741-A333-A96694AF409A}"
 EndProject

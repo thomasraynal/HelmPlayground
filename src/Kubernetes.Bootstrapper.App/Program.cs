@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 
-namespace Kubernetes.Bootstrapper.App
+namespace Kubernetes.Bootstrapper.One.App
 {
     public static class Program
     {

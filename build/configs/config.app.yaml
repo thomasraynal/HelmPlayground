@@ -1,3 +1,4 @@
-appConfiguration:
-    foo: bar
-    bar: foo
+appConfig:
+    MyAppConfig:
+        foo: bar
+        bar: foo

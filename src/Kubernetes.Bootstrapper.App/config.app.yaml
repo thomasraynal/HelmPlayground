@@ -1,0 +1,3 @@
+MyAppConfig:
+    Foo: bar
+    Bar: foo

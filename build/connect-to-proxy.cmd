@@ -9,7 +9,7 @@ REM which environment are we connecting to
 REM -----
 echo %1
 SET KUBEFILE=%1
-SET KUBEPORT=8001
+SET KUBEPORT=8002
 
 REM -----
 REM set variables

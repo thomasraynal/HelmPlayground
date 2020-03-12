@@ -1,13 +1,12 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using EventStore.Client.Lite;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Yaml;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace Kubernetes.Bootstrapper.App
+namespace Kubernetes.Bootstrapper.One.App
 {
     public class Startup
     {
@@ -36,8 +35,13 @@ namespace Kubernetes.Bootstrapper.App
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var appConfig = ConfigurationRoot.GetSection(nameof(OneConfiguration)).Get<OneConfiguration>();
-            var groupConfig = ConfigurationRoot.GetSection(nameof(GroupConfiguration)).Get<GroupConfiguration>();
+            var appConfig = ConfigurationRoot.GetSection(nameof(MyAppConfig)).Get<MyAppConfig>();
+            var groupConfig = ConfigurationRoot.GetSection(nameof(MyGroupConfig)).Get<MyGroupConfig>();
+
+            services.AddTransient<IEvent<Guid>, DoThingEvent>();
+
+            services.AddEventStore<Guid, EventStoreRepository<Guid>>("tcp://admin:changeit@localhost:1113")
+                    .AddEventStoreCache<Guid, Item>();
 
             services.AddSingleton(appConfig);
             services.AddSingleton(groupConfig);

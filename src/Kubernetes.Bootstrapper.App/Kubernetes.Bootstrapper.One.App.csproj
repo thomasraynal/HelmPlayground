@@ -4,10 +4,11 @@
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <ApplicationIcon />
     <OutputType>Exe</OutputType>
-    <StartupObject>Kubernetes.Bootstrapper.App.Program</StartupObject>
+    <StartupObject>Kubernetes.Bootstrapper.One.App.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="EventStore.Client.Lite" Version="1.0.46" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.7" />
@@ -20,6 +21,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="config.app.yaml">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="config.group.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

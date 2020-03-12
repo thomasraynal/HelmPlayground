@@ -1,3 +1,3 @@
 {{- define "namespace" -}}
-{{- .Values.group | replace "." "-" -}}-namespace
+{{- .Values.group | replace "." "-" -}}
 {{- end -}}

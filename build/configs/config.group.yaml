@@ -1,2 +1,4 @@
-groupConfiguration:
-    Group: one
+groupConfig:
+    MyGroupConfig:
+        group: one
+        eventStoreConfiguration : tcp://admin:changeit@localhost:1113

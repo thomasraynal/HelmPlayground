@@ -41,8 +41,6 @@ public class Build : NukeBuild
     public string DockerRegistryPassword;
     [Parameter("Webservices runtime image")]
     public string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
-    [Parameter("Standard apps runtime image")]
-    public string AppsRuntimeDockerImage = "microsoft/dotnet:2.2-runtime";
     [Parameter("Set the build Id.")]
     public string BuildId;
     //[Parameter("Set the group to be deployed")]
@@ -134,26 +132,64 @@ public class Build : NukeBuild
 
 
     public Target Deploy => _ => _
-        .DependsOn(Package)
+        //.DependsOn(Package)
         .Executes(() =>
         {
             DeployApps("one","app1");
         });
 
 
-        //Target CleanPackage => _ => _
-        //.After(Package)
-        //.Executes(() =>
-        //{
-        //    var images = GetApplicationProjects()
-        //        .Select(p => $"{GetProjectDockerImageName(p)}:{BuildId.ToLower()}")
-        //        .ToArray();
+    public Target AddEventStore => _ => _
+        .Executes(() =>
+        {
+            HelmRepoAdd(helmRepoAddSettings =>
+           {
 
-        //    DockerRmi(s => s
-        //        .SetImages(images)
-        //        .EnableForce()
-        //        );
-        //});
+               return helmRepoAddSettings.SetName("eventstore")
+                                         .SetUrl("https://eventstore.github.io/EventStore.Charts");
+
+           });
+
+
+            HelmRepoUpdate(s => HelmEnvVars(s));
+
+
+        });
+
+
+    public Target InstallEventStore => _ => _
+        .DependsOn(AddEventStore)
+        .Executes(() =>
+        {
+
+            InstallNamespace("eventstore");
+
+            HelmUpgrade(helmRepoUpgradeSettings =>
+            {
+
+                return helmRepoUpgradeSettings
+                .EnableInstall()
+                .SetNamespace("eventstore")
+                .SetChart("eventstore/eventstore")
+                .SetRelease("eventstore");
+                                                          
+            });
+
+        });
+
+    //Target CleanPackage => _ => _
+    //.After(Package)
+    //.Executes(() =>
+    //{
+    //    var images = GetApplicationProjects()
+    //        .Select(p => $"{GetProjectDockerImageName(p)}:{BuildId.ToLower()}")
+    //        .ToArray();
+
+    //    DockerRmi(s => s
+    //        .SetImages(images)
+    //        .EnableForce()
+    //        );
+    //});
 
 
     private void DeployApps(string group, params string[] appNames)
@@ -164,7 +200,7 @@ public class Build : NukeBuild
         HelmRepoUpdate(s => HelmEnvVars(s));
         InstallNamespace(lowerCaseAppGroup);
 
-        InstallGroup(group, BuildDirectory / "config" / "config.group.yaml");
+        InstallGroup(group, BuildDirectory / "configs" / "config.group.yaml");
 
         (string app, string appName, string appShortName)[] apps =
             appNames
@@ -173,7 +209,7 @@ public class Build : NukeBuild
 
         foreach (var app in apps)
         {
-            HelmInstall(app.appName, HelmChartsDirectory / "api", group, $"{group}-namespace");
+            HelmInstall(app.appName, HelmChartsDirectory / "api", group, $"{group}");
         }
 
     }
@@ -224,7 +260,7 @@ public class Build : NukeBuild
 
             DockerBuild(s => s
                 .SetFile(OneForAllDockerFile)
-                .AddBuildArg($"RUNTIME_IMAGE={GetRuntimeImage(proj)}")
+                .AddBuildArg($"RUNTIME_IMAGE={WebservicesRuntimeDockerImage}")
                 .AddBuildArg($"PROJECT_NAME={projectName}")
                 .AddBuildArg($"BUILD_ID={BuildId}")
                 .SetTag($"{GetProjectDockerImageName(proj)}:{BuildId.ToLower()}")
@@ -234,8 +270,6 @@ public class Build : NukeBuild
            
         }
     }
-
-    protected string GetRuntimeImage(string proj) => IsWebService(proj) ? WebservicesRuntimeDockerImage : AppsRuntimeDockerImage;
 
     protected void ExecuteTests(string[] projects, bool nobuild = false)
     {
@@ -304,16 +338,14 @@ public class Build : NukeBuild
         directory = directory ?? SourceDirectory;
 
         var result = GlobFiles(directory, "**/*.csproj").NotEmpty()
-            .Where(p => IsRunable(p))
+            .Where(p => IsApp(p))
             .OrderBy(p => p);
 
 
         return result.ToArray();
     }
 
-    protected virtual bool IsRunable(string proj) => IsWebService(proj) || IsStandardApp(proj);
-    protected virtual bool IsStandardApp(string proj) => proj.EndsWith(".App.csproj", StringComparison.OrdinalIgnoreCase);
-    protected virtual bool IsWebService(string proj) => proj.EndsWith(".RestAPI.csproj", StringComparison.OrdinalIgnoreCase);
+    protected virtual bool IsApp(string proj) => proj.EndsWith(".App.csproj", StringComparison.OrdinalIgnoreCase);
 
     protected virtual string[] GetNugetPackageProjects()
     {
@@ -375,30 +407,30 @@ public class Build : NukeBuild
 
     private void InstallNamespace(string group)
     {
-        HelmInstall($"{group}-namespace", HelmChartsDirectory / "namespace", group, "default", true);
+        HelmInstall($"{group}", HelmChartsDirectory / "namespace", group, "default", true);
     }
 
     private void InstallGroup(string group, string groupFile)
     {
+        HelmUpgrade(helmUpgradeSettings =>
+       {
+           return helmUpgradeSettings
+                   .EnableInstall()
+                   // .EnableForce()
+                   .SetRelease($"{group}-group-config")
+                   .SetChart(HelmChartsDirectory / "group")
+                   .AddSet("group", group)
+                   .SetNamespace(group)
+                   //.SetRecreatePods(true)
+                   .AddValues(groupFile);
 
-        HelmInstall(
-            $"{group}-group-config", HelmChartsDirectory / "group",
-           group, $"{group}-namespace",
-            configurator: s =>
-            {
-                s = s.AddValues(groupFile);
-                return s;
-            });
+       });
     }
 
     private IReadOnlyCollection<Output> HelmInstall(string appName, string chart, string group, string @namespace, bool isNamespace = false, Configure<HelmUpgradeSettings> configurator = null)
     {
 
-       // var groupConfig = ;
         var appConfig = BuildDirectory / "configs" / "config.app.yaml";
-
-
-        Console.WriteLine($"{appName} {chart} {group} {@namespace} {isNamespace}");
 
         return HelmUpgrade(helmUpgradeSettings =>
         {
@@ -412,6 +444,7 @@ public class Build : NukeBuild
                 .SetNamespace(@namespace)
                 //.SetRecreatePods(true)
                 .AddValues(appConfig);
+                //.AddValues(groupConfig);
 
             if (!isNamespace)
             {

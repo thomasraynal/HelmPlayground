@@ -1,4 +1,3 @@
-AppsRuntimeDockerImage: 
 BuildId: 
 Continue: 
 DockerRegistryPassword: 
@@ -18,15 +17,19 @@ NoLogo:
 Plan: 
 Root: 
 Skip:
+- AddEventStore
 - Clean
 - Deploy
+- InstallEventStore
 - Package
 - Publish
 - Restore
 - Test
 Target:
+- AddEventStore
 - Clean
 - Deploy
+- InstallEventStore
 - Package
 - Publish
 - Restore
