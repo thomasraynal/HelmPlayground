@@ -1,10 +1,16 @@
 ﻿using EventStore.Client.Lite;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Yaml;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Newtonsoft.Json;
 using System;
+using System.Linq;
+using System.Net.Mime;
 
 namespace Kubernetes.Bootstrapper.One.App
 {
@@ -24,7 +30,22 @@ namespace Kubernetes.Bootstrapper.One.App
         public void Configure(IApplicationBuilder app)
         {
 
-            app.UseHealthChecks("/health", 1337);
+            app.UseHealthChecks("/health", 1337,
+               new HealthCheckOptions
+               {
+                   ResponseWriter = async (context, report) =>
+                   {
+                       var result = JsonConvert.SerializeObject(
+                           new
+                           {
+                               status = report.Status.ToString(),
+                               errors = report.Entries.Select(e => new { key = e.Key, value = Enum.GetName(typeof(HealthStatus), e.Value.Status) })
+                           });
+                       context.Response.ContentType = MediaTypeNames.Application.Json;
+                       await context.Response.WriteAsync(result);
+                   }
+               });
+
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
@@ -37,6 +58,12 @@ namespace Kubernetes.Bootstrapper.One.App
         {
             var appConfig = ConfigurationRoot.GetSection(nameof(MyAppConfig)).Get<MyAppConfig>();
             var groupConfig = ConfigurationRoot.GetSection(nameof(MyGroupConfig)).Get<MyGroupConfig>();
+
+
+            Console.WriteLine(JsonConvert.SerializeObject(appConfig));
+            Console.WriteLine(JsonConvert.SerializeObject(groupConfig));
+
+            services.AddLogging();
 
             services.AddTransient<IEvent<Guid>, DoThingEvent>();
 

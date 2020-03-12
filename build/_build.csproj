@@ -42,10 +42,10 @@
     <None Update="configs\config .app.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="configs\config.app.yaml">
+    <None Update="configs\mydomain\kubernetes.bootstrapper.one.app\config.app.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="configs\config.group.yaml">
+    <None Update="configs\mydomain\config.group.yaml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="helm\charts\api\Chart.yaml">

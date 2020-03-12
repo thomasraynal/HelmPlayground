@@ -3,6 +3,7 @@ Continue:
 DockerRegistryPassword: 
 DockerRegistryServer: 
 DockerRegistryUserName: 
+DomainToBeDeployed: 
 Help: 
 Host:
 - AppVeyor

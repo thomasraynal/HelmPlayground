@@ -1,5 +1,6 @@
 ﻿using EventStore.Client.Lite;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,11 +13,27 @@ namespace Kubernetes.Bootstrapper.One.App
     {
         private IEventStoreRepository<Guid> _repository;
         private IEventStoreCache<Guid, Item> _eventStoreCache;
+        private MyAppConfig _myAppConfig;
+        private MyGroupConfig _myGroupConfig;
 
-        public OneController(IEventStoreRepository<Guid> repository, IEventStoreCache<Guid, Item> eventStoreCache)
+        public OneController(IEventStoreRepository<Guid> repository, IEventStoreCache<Guid, Item> eventStoreCache, MyAppConfig myAppConfig, MyGroupConfig myGroupConfig)
         {
             _repository = repository;
             _eventStoreCache = eventStoreCache;
+            _myAppConfig = myAppConfig;
+            _myGroupConfig = myGroupConfig;
+        }
+
+        [HttpGet("config/group")]
+        public string GetGroupConfig()
+        {
+            return JsonConvert.SerializeObject(_myGroupConfig);
+        }
+
+        [HttpGet("config/app")]
+        public string GetAppConfig()
+        {
+            return JsonConvert.SerializeObject(_myAppConfig);
         }
 
         [HttpPost("{itemId}")]

@@ -12,6 +12,7 @@ namespace Kubernetes.Bootstrapper.One.App
         {
             var webHost = new WebHostBuilder()
                 .UseKestrel()
+                .UseUrls("http://*:5000", "http://*:1337")
                 .UseStartup<Startup>()
                 .Build();
 

@@ -21,7 +21,6 @@ using Nuke.Helm;
 using Nuke.Common.Tooling;
 using Nuke.Kubernetes;
 using System.Collections.Generic;
-using System.Reactive.Disposables;
 
 [CheckBuildProjectConfigurations]
 [UnsetVisualStudioEnvironmentVariables]
@@ -43,11 +42,14 @@ public class Build : NukeBuild
     public string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
     [Parameter("Set the build Id.")]
     public string BuildId;
-    //[Parameter("Set the group to be deployed")]
-    //public string GroupToBeDeploy;
-    //[Parameter("Set the apps to be deployed")]
-    //public string[] AppsToBeDeployed;
 
+    [Parameter("Set the domain to be deployed")]
+    public string DomainToBeDeployed;
+
+    //[Parameter("Set application to be deployed")]
+    //public string[] Applications;
+
+    private AbsolutePath ConfigDirectory => RootDirectory / "configs";
     private AbsolutePath BuildDirectory => RootDirectory / "build";
     private AbsolutePath SourceDirectory => RootDirectory / "src";
     private AbsolutePath TestsDirectory => RootDirectory / "tests";
@@ -132,10 +134,18 @@ public class Build : NukeBuild
 
 
     public Target Deploy => _ => _
-        //.DependsOn(Package)
+        .DependsOn(Package)
         .Executes(() =>
         {
-            DeployApps("one","app1");
+            foreach(var project in GetApplicationProjects())
+            {
+                var appName = Path.GetFileName(project).Replace(".csproj", "");
+                
+                DeployApps(appName);
+
+            }
+
+
         });
 
 
@@ -192,24 +202,25 @@ public class Build : NukeBuild
     //});
 
 
-    private void DeployApps(string group, params string[] appNames)
+    private void DeployApps(params string[] appNames)
     {
 
-        var lowerCaseAppGroup = group.ToLower();
+        var lowerCaseAppGroup = DomainToBeDeployed.ToLower();
 
         HelmRepoUpdate(s => HelmEnvVars(s));
+
         InstallNamespace(lowerCaseAppGroup);
 
-        InstallGroup(group, BuildDirectory / "configs" / "config.group.yaml");
+        InstallDomain();
 
         (string app, string appName, string appShortName)[] apps =
             appNames
-                .Select(appName => ($"{lowerCaseAppGroup}.{appName.ToLower()}", $"{appName.ToLower()}", $"{group}.{appName}"))
+                .Select(appName => ($"{lowerCaseAppGroup}.{appName.ToLower()}", $"{appName.ToLower()}", $"{DomainToBeDeployed}.{appName.ToLower()}"))
                 .ToArray();
 
         foreach (var app in apps)
         {
-            HelmInstall(app.appName, HelmChartsDirectory / "api", group, $"{group}");
+            HelmInstall(app.appName, HelmChartsDirectory / "api", DomainToBeDeployed, DomainToBeDeployed);
         }
 
     }
@@ -227,8 +238,12 @@ public class Build : NukeBuild
 
         foreach (var proj in projects)
         {
+     
+
             var imageNameAndTag = $"{GetProjectDockerImageName(proj)}:{BuildId.ToLower()}";
             var imageNameAndTagOnRegistry = $"{DockerRegistryServer}/{DockerRegistryUserName}/{imageNameAndTag}";
+
+            Console.WriteLine(imageNameAndTagOnRegistry);
 
             DockerTag(s => s
                 .SetSourceImage(imageNameAndTag)
@@ -266,7 +281,6 @@ public class Build : NukeBuild
                 .SetTag($"{GetProjectDockerImageName(proj)}:{BuildId.ToLower()}")
                 .SetPath(publishedPath)
                 .EnableForceRm());
-             
            
         }
     }
@@ -407,30 +421,28 @@ public class Build : NukeBuild
 
     private void InstallNamespace(string group)
     {
-        HelmInstall($"{group}", HelmChartsDirectory / "namespace", group, "default", true);
+        HelmInstall(group, HelmChartsDirectory / "namespace", group, "default", true);
     }
 
-    private void InstallGroup(string group, string groupFile)
+    private void InstallDomain()
     {
         HelmUpgrade(helmUpgradeSettings =>
        {
            return helmUpgradeSettings
                    .EnableInstall()
                    // .EnableForce()
-                   .SetRelease($"{group}-group-config")
+                   .SetRelease($"{DomainToBeDeployed}-group-config")
                    .SetChart(HelmChartsDirectory / "group")
-                   .AddSet("group", group)
-                   .SetNamespace(group)
+                   .AddSet("group", DomainToBeDeployed)
+                   .SetNamespace(DomainToBeDeployed)
                    //.SetRecreatePods(true)
-                   .AddValues(groupFile);
+                   .AddValues(BuildDirectory / "configs" / DomainToBeDeployed / "config.group.yaml");
 
        });
     }
 
     private IReadOnlyCollection<Output> HelmInstall(string appName, string chart, string group, string @namespace, bool isNamespace = false, Configure<HelmUpgradeSettings> configurator = null)
     {
-
-        var appConfig = BuildDirectory / "configs" / "config.app.yaml";
 
         return HelmUpgrade(helmUpgradeSettings =>
         {
@@ -441,36 +453,25 @@ public class Build : NukeBuild
                 .SetChart(chart)
                 .AddSet("group", group)
                 .AddSet("app", appName)
-                .SetNamespace(@namespace)
+                .SetNamespace(@namespace);
                 //.SetRecreatePods(true)
-                .AddValues(appConfig);
-                //.AddValues(groupConfig);
+                
 
             if (!isNamespace)
             {
-            
-                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.tag", BuildId.ToLower());
-                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.repository", DockerRegistryServer);
-                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.branch", Branch);
-            }
+                var appConfig = BuildDirectory / "configs" / DomainToBeDeployed / appName / "config.app.yaml";
+
+                helmUpgradeSettings = helmUpgradeSettings.AddSet("image.tag", BuildId.ToLower())
+                                                         .AddSet("image.repository", $"{DockerRegistryServer}/{DockerRegistryUserName}")
+                                                         .AddSet("image.branch", Branch)
+                                                         .AddValues(appConfig);
+            } 
 
             return helmUpgradeSettings;
 
         });
     }
 
-    //protected void InstallGroup(string product, string tenant, string group, string env, string valuesFile = null)
-    //{
-    //    valuesFile = valuesFile ?? ConfigsDirectory / product / env / "groups" / group / "group.yaml";
-    //    HelmInstall(
-    //        $"{Namespace(product, tenant, group)}-group-config", HelmChartsDirectory / "bz-group",
-    //        product, tenant, group, env: env,
-    //        configurator: s =>
-    //        {
-    //            s = s.AddValues(valuesFile);
-    //            return s;
-    //        });
-    //}
 
 
 
