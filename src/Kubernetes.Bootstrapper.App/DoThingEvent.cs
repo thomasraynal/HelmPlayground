@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Kubernetes.Bootstrapper.One.App
 {
-    public class DoThingEvent : EventBase<Guid, Item>
+    public class DoThingEvent : EventBase<Guid, Thing>
     {
         public string Value { get; set; }
 
-        protected override void ApplyInternal(Item entity)
+        protected override void ApplyInternal(Thing entity)
         {
             entity.Value = Value;
         }

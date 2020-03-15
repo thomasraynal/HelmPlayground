@@ -12,11 +12,11 @@ namespace Kubernetes.Bootstrapper.One.App
     public class OneController : Controller
     {
         private IEventStoreRepository<Guid> _repository;
-        private IEventStoreCache<Guid, Item> _eventStoreCache;
+        private IEventStoreCache<Guid, Thing> _eventStoreCache;
         private MyAppConfig _myAppConfig;
         private MyGroupConfig _myGroupConfig;
 
-        public OneController(IEventStoreRepository<Guid> repository, IEventStoreCache<Guid, Item> eventStoreCache, MyAppConfig myAppConfig, MyGroupConfig myGroupConfig)
+        public OneController(IEventStoreRepository<Guid> repository, IEventStoreCache<Guid, Thing> eventStoreCache, MyAppConfig myAppConfig, MyGroupConfig myGroupConfig)
         {
             _repository = repository;
             _eventStoreCache = eventStoreCache;
@@ -39,11 +39,11 @@ namespace Kubernetes.Bootstrapper.One.App
         [HttpPost("{itemId}")]
         public async Task SetValue(Guid itemId, [FromForm] string value)
         {
-            var item = await _repository.GetById<Item>(itemId);
+            var item = await _repository.GetById<Thing>(itemId);
 
             if (null == item)
             {
-                item = new Item()
+                item = new Thing()
                 {
                     EntityId = itemId
                 };
@@ -56,7 +56,7 @@ namespace Kubernetes.Bootstrapper.One.App
         [HttpGet("{itemId}")]
         public async Task<IActionResult> GetValue(Guid itemId)
         {
-            var item = await _repository.GetById<Item>(itemId);
+            var item = await _repository.GetById<Thing>(itemId);
 
             if (null == item) return NotFound();
 

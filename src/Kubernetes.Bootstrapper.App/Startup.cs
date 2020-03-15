@@ -7,10 +7,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Yaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
 using System;
 using System.Linq;
 using System.Net.Mime;
+using System.Threading.Tasks;
+using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
 
 namespace Kubernetes.Bootstrapper.One.App
 {
@@ -63,12 +66,14 @@ namespace Kubernetes.Bootstrapper.One.App
             Console.WriteLine(JsonConvert.SerializeObject(appConfig));
             Console.WriteLine(JsonConvert.SerializeObject(groupConfig));
 
+            services.Scan(scan => scan.FromEntryAssembly()
+                           .AddClasses(classes => classes.AssignableTo<IHostedService>()).AsImplementedInterfaces()
+                          .AddClasses(classes => classes.AssignableTo<IEvent<Guid>>()).AsImplementedInterfaces());
+
+            services.AddEventStore<Guid, EventStoreRepository<Guid>>(groupConfig.EventStoreConfiguration)
+                    .AddEventStoreCache<Guid, Thing>();
+
             services.AddLogging();
-
-            services.AddTransient<IEvent<Guid>, DoThingEvent>();
-
-            services.AddEventStore<Guid, EventStoreRepository<Guid>>("tcp://admin:changeit@localhost:1113")
-                    .AddEventStoreCache<Guid, Item>();
 
             services.AddSingleton(appConfig);
             services.AddSingleton(groupConfig);

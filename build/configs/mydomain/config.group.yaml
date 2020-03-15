@@ -1,4 +1,4 @@
 groupConfig:
     MyGroupConfig:
         group: one
-        eventStoreConfiguration : tcp://admin:changeit@localhost:1113
+        eventStoreConfiguration : tcp://eventstore.default.svc.cluster.local:1113

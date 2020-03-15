@@ -168,14 +168,17 @@ public class Build : NukeBuild
         .Executes(() =>
         {
 
-            InstallNamespace("eventstore");
+            //var eventStoreNamespace = "eventstore";
+
+            //InstallNamespace(eventStoreNamespace);
 
             HelmUpgrade(helmRepoUpgradeSettings =>
             {
 
                 return helmRepoUpgradeSettings
+                .EnableForce()
                 .EnableInstall()
-                .SetNamespace("eventstore")
+               // .SetNamespace(eventStoreNamespace)
                 .SetChart("eventstore/eventstore")
                 .SetRelease("eventstore");
                                                           
