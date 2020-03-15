@@ -1,4 +1,4 @@
-SET KUBEFILE=C:\Users\ThomasRAYNAL\.kube\config
+SET KUBEFILE=.\build\kube\test2
 
 echo %KUBEFILE%
 

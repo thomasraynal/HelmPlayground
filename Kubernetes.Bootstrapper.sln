@@ -5,7 +5,14 @@ VisualStudioVersion = 16.0.29326.143
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{206DCC2F-7AC3-494A-AEB4-9F982CEBB062}"
 	ProjectSection(SolutionItems) = preProject
-		deploy.cmd = deploy.cmd
+		connect-to-proxy-test.cmd = connect-to-proxy-test.cmd
+		connect-to-proxy-test2.cmd = connect-to-proxy-test2.cmd
+		connect-to-proxy.cmd = connect-to-proxy.cmd
+		create-admin.cmd = create-admin.cmd
+		deploy-eventstore-to-test.cmd = deploy-eventstore-to-test.cmd
+		deploy-eventstore-to-test2.cmd = deploy-eventstore-to-test2.cmd
+		deploy-to-test.cmd = deploy-to-test.cmd
+		deploy-to-test2.cmd = deploy-to-test2.cmd
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{AB2C9021-AF0B-432A-B08F-9A1D9A137E78}"

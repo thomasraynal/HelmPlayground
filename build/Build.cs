@@ -31,34 +31,37 @@ public class Build : NukeBuild
     private readonly GitRepository GitRepository;
 
     private readonly Configuration Configuration = Configuration.Release;
+    private readonly string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
 
+    [Required]
     [Parameter("Docker registry")]
     public string DockerRegistryServer;
+
+    [Required]
     [Parameter("Docker registry user name")]
     public string DockerRegistryUserName;
+
+    [Required]
     [Parameter("Docker registry password")]
     public string DockerRegistryPassword;
-    [Parameter("Webservices runtime image")]
-    public string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
+
+    [Required]
     [Parameter("Set the build Id.")]
     public string BuildId;
 
+    [Required]
     [Parameter("Set the domain to be deployed")]
     public string DomainToBeDeployed;
 
     //[Parameter("Set application to be deployed")]
     //public string[] Applications;
 
-    private AbsolutePath ConfigDirectory => RootDirectory / "configs";
     private AbsolutePath BuildDirectory => RootDirectory / "build";
     private AbsolutePath SourceDirectory => RootDirectory / "src";
     private AbsolutePath TestsDirectory => RootDirectory / "tests";
     private AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
-    
-    //todo : config in the csproj folder
-    private AbsolutePath ConfigsDirectory => RootDirectory / "configs";
+    private AbsolutePath ConfigsDirectory => BuildDirectory / "configs";
     private AbsolutePath HelmChartsDirectory => BuildDirectory / "helm" / "charts";
-    //private AbsolutePath KubeResourcesDirectory => BuildAssemblyDirectory / "kubernetes";
     private string Branch => GitRepository?.Branch ?? "NO_GIT_REPOS_DETECTED";
     private AbsolutePath OneForAllDockerFile => BuildDirectory / "docker" / "build.nuke.app.dockerfile";
 
@@ -74,24 +77,22 @@ public class Build : NukeBuild
     Target Clean => _ => _
         .Executes(() =>
         {
-            //foreach (var dir in directories.Distinct().ToArray())
-            //    try
-            //    {
-            //        if (!DirectoryExists((AbsolutePath)dir))
-            //        {
-            //            Warn($"Not existing directory : {dir}");
-            //            continue;
-            //        }
 
-            //        DeleteDirectory(dir);
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        Warn(ex.Message);
-            //    }
+            foreach (var dir in SourceDirectory.GlobDirectories("**/bin", "**/obj")
+                         .Concat(TestsDirectory.GlobDirectories("**/bin", "**/obj")))
+                try
+                {
+                    if (!DirectoryExists(dir))
+                    {
+                        Warn($"Not existing directory : {dir}");
+                        continue;
+                    }
 
-            //SourceDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
-            //TestsDirectory.GlobDirectories("**/bin", "**/obj").ForEach(DeleteDirectory);
+                    DeleteDirectory(dir);
+                }
+                catch
+                {
+                }
 
             EnsureCleanDirectory(ArtifactsDirectory);
         });
@@ -112,9 +113,6 @@ public class Build : NukeBuild
         .DependsOn(Restore)
         .Executes(() =>
         {
-
-            ShowInformations();
-
             var applications = GetAllProjects();
 
             PublishApplications(applications);
@@ -160,9 +158,7 @@ public class Build : NukeBuild
 
            });
 
-
-            HelmRepoUpdate(s => HelmEnvVars(s));
-
+            HelmRepoUpdate();
 
         });
 
@@ -207,7 +203,7 @@ public class Build : NukeBuild
 
         var lowerCaseAppGroup = DomainToBeDeployed.ToLower();
 
-        HelmRepoUpdate(s => HelmEnvVars(s));
+        HelmRepoUpdate();
 
         InstallNamespace(lowerCaseAppGroup);
 
@@ -367,21 +363,6 @@ public class Build : NukeBuild
         return result.ToArray();
     }
 
-    protected virtual void ShowInformations()
-    {
-        Info($"Host : {Host}");
-        //Info($"Branch : {Branch}");
-        //Info($"BuildId : {BuildId}");
-        //Info($"BuildNumber: {BuildNumber}");
-        Info($"RootDirectory : {RootDirectory}");
-        Info($"ArtifactsDirectory : {ArtifactsDirectory}");
-        //Info($"TestsOuputDirectory : {TestsOuputDirectory}");
-        Info($"BuildProjectDirectory : {BuildProjectDirectory}");
-        //Info($"NukeBuildProjectDirectory  : {NukeBuildProjectDirectory}");
-        Info($"BuildAssemblyDirectory : {BuildAssemblyDirectory}");
-        //Info($"DockerRegistryServer : {DockerRegistryServer ?? "-none-"}");
-    }
-
     protected void PublishApplications(params string[] projects)
     {
         foreach (var proj in projects)
@@ -404,21 +385,6 @@ public class Build : NukeBuild
         }
     }
 
-
-    readonly Dictionary<string, string> _kubeEnvironmentVariables = new Dictionary<string, string>();
-
-    private T HelmEnvVars<T>(T kubeSettings) where T : HelmToolSettings => EnvVars(kubeSettings, _kubeEnvironmentVariables);
-
-    private T EnvVars<T>(T settings, Dictionary<string, string> envVars)
-        where T : ToolSettings
-    {
-        foreach (var v in envVars)
-        {
-            settings = settings.SetEnvironmentVariable(v.Key, v.Value);
-        }
-        return settings;
-    }
-
     private void InstallNamespace(string group)
     {
         HelmInstall(group, HelmChartsDirectory / "namespace", group, "default", true);
@@ -436,7 +402,7 @@ public class Build : NukeBuild
                    .AddSet("group", DomainToBeDeployed)
                    .SetNamespace(DomainToBeDeployed)
                    //.SetRecreatePods(true)
-                   .AddValues(BuildDirectory / "configs" / DomainToBeDeployed / "config.group.yaml");
+                   .AddValues(ConfigsDirectory / DomainToBeDeployed / "config.group.yaml");
 
        });
     }
@@ -446,7 +412,7 @@ public class Build : NukeBuild
 
         return HelmUpgrade(helmUpgradeSettings =>
         {
-            helmUpgradeSettings = HelmEnvVars(helmUpgradeSettings)
+            helmUpgradeSettings = helmUpgradeSettings
                 .EnableInstall()
                 // .EnableForce()
                 .SetRelease(appName)
@@ -454,18 +420,18 @@ public class Build : NukeBuild
                 .AddSet("group", group)
                 .AddSet("app", appName)
                 .SetNamespace(@namespace);
-                //.SetRecreatePods(true)
-                
+            //.SetRecreatePods(true)
+
 
             if (!isNamespace)
             {
-                var appConfig = BuildDirectory / "configs" / DomainToBeDeployed / appName / "config.app.yaml";
+                var appConfig = ConfigsDirectory / DomainToBeDeployed / appName / "config.app.yaml";
 
                 helmUpgradeSettings = helmUpgradeSettings.AddSet("image.tag", BuildId.ToLower())
                                                          .AddSet("image.repository", $"{DockerRegistryServer}/{DockerRegistryUserName}")
                                                          .AddSet("image.branch", Branch)
                                                          .AddValues(appConfig);
-            } 
+            }
 
             return helmUpgradeSettings;
 

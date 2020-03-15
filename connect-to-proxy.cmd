@@ -28,7 +28,9 @@ REM -----
 REM start http://localhost:%KUBEPORT%/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 REM start http://localhost:%KUBEPORT%/api/v1/namespaces/kube-system/services/kubernetes-dashboard/proxy
 REM start http://localhost:%KUBEPORT%/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=_all
-start     http://localhost:%KUBEPORT%/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=_all
+REM start     http://localhost:%KUBEPORT%/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=_all
+start http://localhost:%KUBEPORT%/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
 REM start the proxy
 REM -----
 kubectl proxy --port=%KUBEPORT%
