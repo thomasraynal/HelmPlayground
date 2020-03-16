@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Kubernetes.Bootstrapper.One.App
+namespace HelmPlayground.One.App
 {
     public class MyAppConfig
     {

@@ -5,7 +5,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace Kubernetes.Bootstrapper.One.App
+namespace HelmPlayground.One.App
 {
     public static class Program
     {

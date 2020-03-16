@@ -15,7 +15,7 @@ using System.Net.Mime;
 using System.Threading.Tasks;
 using IHostingEnvironment = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
 
-namespace Kubernetes.Bootstrapper.One.App
+namespace HelmPlayground.One.App
 {
     public class Startup
     {

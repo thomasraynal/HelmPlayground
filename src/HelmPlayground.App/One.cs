@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Kubernetes.Bootstrapper.One.App
+namespace HelmPlayground.One.App
 {
     [Route("One")]
     public class OneController : Controller

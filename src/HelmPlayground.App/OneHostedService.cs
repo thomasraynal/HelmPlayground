@@ -1,15 +1,12 @@
-﻿using DynamicData;
-using EventStore.Client.Lite;
+﻿using EventStore.Client.Lite;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Reactive.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Kubernetes.Bootstrapper.One.App
+namespace HelmPlayground.One.App
 {
     public class OneHostedService : IHostedService
     {

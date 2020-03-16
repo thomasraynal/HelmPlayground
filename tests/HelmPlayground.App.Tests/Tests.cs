@@ -1,7 +1,7 @@
 ﻿using System;
 using Xunit;
 
-namespace Kubernetes.Bootstrapper.AppOne.Tests
+namespace HelmPlayground.AppOne.Tests
 {
     public class Tests
     {

@@ -31,7 +31,8 @@ public class Build : NukeBuild
     private readonly GitRepository GitRepository;
 
     private readonly Configuration Configuration = Configuration.Release;
-    private readonly string WebservicesRuntimeDockerImage = "microsoft/dotnet:2.2-aspnetcore-runtime";
+    
+    public string RuntimeDockerImage { get; set; } = "microsoft/dotnet:2.2-aspnetcore-runtime";
 
     [Required]
     [Parameter("Docker registry")]
@@ -53,8 +54,8 @@ public class Build : NukeBuild
     [Parameter("Set the domain to be deployed")]
     public string DomainToBeDeployed;
 
-    //[Parameter("Set application to be deployed")]
-    //public string[] Applications;
+    [Parameter("Set the applications to be deployed")]
+    public string[] ApplicationsToBeDeployed;
 
     private AbsolutePath BuildDirectory => RootDirectory / "build";
     private AbsolutePath SourceDirectory => RootDirectory / "src";
@@ -143,8 +144,8 @@ public class Build : NukeBuild
 
             }
 
-
         });
+
 
 
     public Target AddEventStore => _ => _
@@ -186,19 +187,7 @@ public class Build : NukeBuild
 
         });
 
-    //Target CleanPackage => _ => _
-    //.After(Package)
-    //.Executes(() =>
-    //{
-    //    var images = GetApplicationProjects()
-    //        .Select(p => $"{GetProjectDockerImageName(p)}:{BuildId.ToLower()}")
-    //        .ToArray();
 
-    //    DockerRmi(s => s
-    //        .SetImages(images)
-    //        .EnableForce()
-    //        );
-    //});
 
 
     private void DeployApps(params string[] appNames)
@@ -274,7 +263,7 @@ public class Build : NukeBuild
 
             DockerBuild(s => s
                 .SetFile(OneForAllDockerFile)
-                .AddBuildArg($"RUNTIME_IMAGE={WebservicesRuntimeDockerImage}")
+                .AddBuildArg($"RUNTIME_IMAGE={RuntimeDockerImage}")
                 .AddBuildArg($"PROJECT_NAME={projectName}")
                 .AddBuildArg($"BUILD_ID={BuildId}")
                 .SetTag($"{GetProjectDockerImageName(proj)}:{BuildId.ToLower()}")
@@ -331,15 +320,6 @@ public class Build : NukeBuild
         return projects;
     }
 
-    protected virtual string[] GetSolutions(AbsolutePath directory = null, bool sharded = false)
-    {
-        directory = directory ?? RootDirectory;
-
-        var result = GlobFiles(directory, "**/*.sln").NotEmpty().OrderBy(p => p);
-
-        return result.ToArray();
-    }
-
     protected virtual string[] GetTestsProjects()
     {
         var result = GlobFiles(TestsDirectory, $"**/*.Tests.csproj").NotEmpty().OrderBy(p => p);
@@ -350,16 +330,9 @@ public class Build : NukeBuild
     {
         directory = directory ?? SourceDirectory;
 
-        var result = GlobFiles(directory, "**/*.csproj").NotEmpty()
-            .Where(p => IsApp(p))
-            .OrderBy(p => p);
-
-
+        var result = GlobFiles(directory, "**/*.App.csproj").NotEmpty().OrderBy(p => p);
         return result.ToArray();
     }
-
-    protected virtual bool IsApp(string proj) => proj.EndsWith(".App.csproj", StringComparison.OrdinalIgnoreCase);
-
     protected virtual string[] GetNugetPackageProjects()
     {
         var result = GlobFiles(SourceDirectory, "**/*.csproj").NotEmpty().OrderBy(p => p);
